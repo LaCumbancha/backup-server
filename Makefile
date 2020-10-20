@@ -13,11 +13,11 @@ deps:
 	go mod vendor
 
 build: deps
-	GOOS=linux go build -o bin/client github.com/LaCumbancha/docker-init/client
 	GOOS=linux go build -o bin/server github.com/LaCumbancha/docker-init/server
 .PHONY: build
 
 docker-image:
+	$(SHELL) docker-compose-builder --clients=$(CLIENTS)
 	docker build -f ./server/Dockerfile -t "server:latest" .
 	docker build -f ./client/Dockerfile -t "client:latest" .
 .PHONY: docker-image
