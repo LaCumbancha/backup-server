@@ -2,7 +2,7 @@ SHELL := /bin/bash
 PWD := $(shell pwd)
 ID := 1
 
-GIT_REMOTE = github.com/7574-sistemas-distribuidos/docker-compose-init
+GIT_REMOTE = github.com/LaCumbancha/backup-server
 
 default: build
 
@@ -13,13 +13,11 @@ deps:
 	go mod vendor
 
 build: deps
-	GOOS=linux go build -o bin/server github.com/LaCumbancha/docker-init/server
+	GOOS=linux go build -o bin/manager github.com/LaCumbancha/backup-server/backup-manager
 .PHONY: build
 
 docker-image:
-	$(SHELL) docker-compose-builder --clients=$(CLIENTS)
-	docker build -f ./server/Dockerfile -t "server:latest" .
-	docker build -f ./client/Dockerfile -t "client:latest" .
+	docker build -f ./backup-manager/Dockerfile -t "bkpManager:latest" .
 .PHONY: docker-image
 
 docker-compose-up: docker-image
@@ -35,10 +33,6 @@ docker-compose-logs:
 	docker-compose -f docker-compose-dev.yaml logs -f
 .PHONY: docker-compose-logs
 
-docker-server-shell:
-	docker container exec -it server /bin/bash
+docker-bkpManager-shell:
+	docker container exec -it bkpManager /bin/bash
 .PHONY: docker-server-shell
-
-docker-client-shell:
-	docker container exec -it client$(ID) /bin/sh
-.PHONY: docker-client-shell
