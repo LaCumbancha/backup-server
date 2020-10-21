@@ -17,7 +17,7 @@ build: deps
 .PHONY: build
 
 docker-image:
-	docker build -f ./backup-manager/Dockerfile -t "bkpManager:latest" .
+	docker build -f ./backup-manager/Dockerfile -t "bkp-manager:latest" .
 .PHONY: docker-image
 
 docker-compose-up: docker-image
@@ -35,4 +35,4 @@ docker-compose-logs:
 
 docker-bkpManager-shell:
 	docker container exec -it bkpManager /bin/bash
-.PHONY: docker-server-shell
+.PHONY: docker-bkpManager-shell

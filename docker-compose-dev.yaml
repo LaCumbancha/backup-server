@@ -1,19 +1,19 @@
 version: '3'
 services:
   backup_manager:
-    container_name: bkpManager
-    image: bkpManager:latest
+    container_name: bkp_manager
+    image: bkp_manager:latest
     entrypoint: /
     environment:
       - BKPMNGR_IP=server
-      - BKPMNGR_CONFIG_FILE=/config/initialConfig.yaml
+      - BKPMNGR_CONFIG_FILE=/config/initial-config.yaml
     volumes:
-      - bkpManager-vol:/config
+      - bkp_manager_vol:/config
     networks:
       - testing_net
 
 volumes:
-  bkpManager-vol:
+  bkp_manager_vol:
     driver: local
     driver_opts:
       type: none
