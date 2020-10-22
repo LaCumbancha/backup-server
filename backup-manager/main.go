@@ -14,31 +14,33 @@ import (
 // InitConfig Function that uses viper library to parse env variables. If
 // some of the variables cannot be parsed, an error is returned
 func InitConfig() (*viper.Viper, error) {
-	v := viper.New()
+	configEnv := viper.New()
 
-	// Configure viper to read env variables with the CLI_ prefix
-	v.AutomaticEnv()
-	v.SetEnvPrefix("bkpmngr")
+	// Configure viper to read env variables with the BKPMNGR_ prefix
+	configEnv.AutomaticEnv()
+	configEnv.SetEnvPrefix("bkpmngr")
 
 	// Add env variables supported
-	v.BindEnv("port")
-	v.BindEnv("storage")
-	v.BindEnv("config", "file")
+	configEnv.BindEnv("port")
+	configEnv.BindEnv("storage")
+	configEnv.BindEnv("config", "file")
 
 	// Read config file if it's present
-	if configFileName := v.GetString("config_file"); configFileName != "" {
+	if configFileName := configEnv.GetString("config_file"); configFileName != "" {
 		path, file, ctype := GetConfigFile(configFileName)
-		v.SetConfigName(file)
-		v.SetConfigType(ctype)
-		v.AddConfigPath(path)
+
+		configFile = viper.New()
+		configFile.SetConfigName(file)
+		configFile.SetConfigType(ctype)
+		configFile.AddConfigPath(path)
 		err := v.ReadInConfig()
 
-		if err != nil {
+		if configFile != nil {
 			return nil, errors.Wrapf(err, fmt.Sprintf("Couldn't load config file"))
 		}
 	}
 
-	return v, nil
+	return configEnv, configFile, nil
 }
 
 func GetConfigFile(configFileName string) (string, string, string) {
@@ -50,19 +52,19 @@ func GetConfigFile(configFileName string) (string, string, string) {
 }
 
 func main() {
-	v, err := InitConfig()
+	configEnv, configFile, err := InitConfig()
 
 	if err != nil {
 		log.Fatalf("%s", err)
 	}
 
-	port := v.GetString("port")
+	port := configEnv.GetString("port") || configFile.GetString("port")
 	
 	if port == "" {
 		log.Fatalf("Port variable missing")
 	}
 
-	storage := v.GetString("storage")
+	storage := configEnv.GetString("storage") || configFile.GetString("storage")
 	
 	if storage == "" {
 		log.Fatalf("Storage variable missing")
