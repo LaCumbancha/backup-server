@@ -17,11 +17,11 @@ build: deps
 .PHONY: build
 
 docker-image:
-	docker build -f ./backup-manager/Dockerfile -t "bkp-manager:latest" .
+	docker build -f ./backup-manager/Dockerfile -t "bkp_manager:latest" .
 .PHONY: docker-image
 
 docker-compose-up: docker-image
-	docker-compose -f docker-compose-dev.yaml up -d --build
+	docker-compose -f docker-compose-dev.yaml up -d --build --remove-orphans
 .PHONY: docker-compose-up
 
 docker-compose-down:
@@ -33,6 +33,6 @@ docker-compose-logs:
 	docker-compose -f docker-compose-dev.yaml logs -f
 .PHONY: docker-compose-logs
 
-docker-bkpManager-shell:
-	docker container exec -it bkpManager /bin/bash
-.PHONY: docker-bkpManager-shell
+docker-manager-shell:
+	docker container exec -it bkp_manager /bin/sh
+.PHONY: docker-manager-shell

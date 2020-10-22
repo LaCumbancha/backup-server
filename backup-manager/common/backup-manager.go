@@ -87,12 +87,10 @@ func (bkpManager *BackupManager) acceptConnections(listener net.Listener) chan n
 			}
 
 			ip, port := ParseAddress(client.RemoteAddr().String())
-			//log.Infof("Got connection from ('%s', %s).", ip, port)
-			fmt.Printf("Got connection from ('%s', %s).\n", ip, port)
+			log.Infof("Got connection from ('%s', %s).", ip, port)
 
 			channel <- client
-			//log.Infof("Proceed to accept new connections.")
-			fmt.Printf("Proceed to accept new connections.\n")
+			log.Infof("Proceed to accept new connections.")
 		}
 	}()
 
@@ -110,25 +108,22 @@ func (bkpManager *BackupManager) handleConnections(client net.Conn) {
 		line, err := buffer.ReadBytes('\n')
 
 		if err == io.EOF {
-			//log.Infof("Connection ('%s', %s) closed.", ip, port, strLine)
-			fmt.Printf("Connection ('%s', %s) closed.\n", ip, port)
+			log.Infof("Connection ('%s', %s) closed.", ip, port)
 			break
 		} else if err != nil {
 			log.Errorf("Couldn't read line", err)
 		}
 
 		strLine := string(line)
-		//log.Infof("Message received from connection ('%s', %s). Msg: %s", ip, port, strLine)
-		fmt.Printf("Message received from connection ('%s', %s). Msg: %s", ip, port, strLine)
+		log.Infof("Message received from connection ('%s', %s). Msg: %s", ip, port, strLine)
 
 		var backupClient BackupClient
 		json.Unmarshal([]byte(strLine), &backupClient)
 
 		if backupClient.Ip == "" || backupClient.Port == "" || backupClient.Path == "" || backupClient.Freq == "" {
-			//log.Errorf("Error receiving some backup mandatory fields.", ip, port, err)
-			fmt.Printf("Error receiving some backup mandatory fields.\n")
+			log.Errorf("Error receiving some backup mandatory fields. IP: %s; Port: %s; Path: '%s'; Frequency: %s.", backupClient.Ip, backupClient.Port, backupClient.Path, backupClient.Freq)
 
-			if _, err := writer.WriteString("Error receiving some backup mandatory fields. Please retry.\n"); err != nil {
+			if _, err := writer.WriteString("Error receiving some backup mandatory fields (IP: %s; Port: %s; Path: '%s'; Frequency: %s). Please retry.\n", backupClient.Ip, backupClient.Port, backupClient.Path, backupClient.Freq); err != nil {
 				log.Errorf("Error sending response to client from connection ('%s', %s)", ip, port, err)
 			} else {
 				writer.Flush()
@@ -136,8 +131,7 @@ func (bkpManager *BackupManager) handleConnections(client net.Conn) {
 			
 		} else {
 
-			//log.Infof("New backup client request, with IP %s, port %s, path %s and frequency %s", backupClient.Ip, backupClient.Port, backupClient.Path, backupClient.Freq)
-			fmt.Printf("New backup client request with: IP %s; Port %s; Path \"%s\"; Frequency %s.\n", backupClient.Ip, backupClient.Port, backupClient.Path, backupClient.Freq)
+			log.Infof("New backup client request, with IP %s, port %s, path %s and frequency %s", backupClient.Ip, backupClient.Port, backupClient.Path, backupClient.Freq)
 			bkpManager.updateBackupsInfo(backupClient)
 
 			if _, err := writer.WriteString("New backup client request successfully added.\n"); err != nil {
@@ -176,8 +170,7 @@ func (bkpManager *BackupManager) updateBackupsInfo(backupClient BackupClient) {
 		log.Fatalf("Error creating backups information file.", err)
 	}
 
-	//log.Infof("New backup client added with: IP %s; Port %s; Path \"%s\"; Frequency %s.", backupClient.Ip, backupClient.Port, backupClient.Path, backupClient.Freq)
-	fmt.Printf("New backup client added with: IP %s; Port %s; Path \"%s\"; Frequency %s.\n", backupClient.Ip, backupClient.Port, backupClient.Path, backupClient.Freq)
+	log.Infof("New backup client added with: IP %s; Port %s; Path \"%s\"; Frequency %s.", backupClient.Ip, backupClient.Port, backupClient.Path, backupClient.Freq)
 }
 
 

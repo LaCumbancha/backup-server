@@ -1,9 +1,9 @@
 version: '3'
 services:
-  backup_manager:
+  bkp_manager:
     container_name: bkp_manager
     image: bkp_manager:latest
-    entrypoint: /
+    entrypoint: /manager
     environment:
       - BKPMNGR_IP=server
       - BKPMNGR_CONFIG_FILE=/config/initial-config.yaml

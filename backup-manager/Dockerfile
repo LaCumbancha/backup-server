@@ -9,4 +9,4 @@ RUN CGO_ENABLED=0 GOOS=linux go build -mod vendor -o bin/manager github.com/LaCu
 
 FROM busybox:latest
 COPY --from=0 /build/bin/manager /manager
-ENTRYPOINT ["/bin/bash"]
+ENTRYPOINT ["/bin/sh"]
