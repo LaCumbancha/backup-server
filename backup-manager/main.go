@@ -11,9 +11,15 @@ import (
 	"github.com/LaCumbancha/backup-server/backup-manager/common"
 )
 
-// InitConfig Function that uses viper library to parse env variables. If
-// some of the variables cannot be parsed, an error is returned
-func InitConfig() (*viper.Viper, error) {
+func GetConfigFile(configFileName string) (string, string, string) {
+	path := filepath.Dir(configFileName)
+	file := filepath.Base(configFileName)
+	ctype := filepath.Ext(configFileName)[1:]
+
+	return path, file, ctype
+}
+
+func InitConfig() (*viper.Viper, *viper.Viper, error) {
 	configEnv := viper.New()
 
 	// Configure viper to read env variables with the BKPMNGR_ prefix
@@ -26,29 +32,31 @@ func InitConfig() (*viper.Viper, error) {
 	configEnv.BindEnv("config", "file")
 
 	// Read config file if it's present
+	var configFile = viper.New()
 	if configFileName := configEnv.GetString("config_file"); configFileName != "" {
 		path, file, ctype := GetConfigFile(configFileName)
 
-		configFile = viper.New()
 		configFile.SetConfigName(file)
 		configFile.SetConfigType(ctype)
 		configFile.AddConfigPath(path)
-		err := v.ReadInConfig()
+		err := configFile.ReadInConfig()
 
-		if configFile != nil {
-			return nil, errors.Wrapf(err, fmt.Sprintf("Couldn't load config file"))
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, fmt.Sprintf("Couldn't load config file"))
 		}
 	}
 
 	return configEnv, configFile, nil
 }
 
-func GetConfigFile(configFileName string) (string, string, string) {
-	path := filepath.Dir(configFileName)
-	file := filepath.Base(configFileName)
-	ctype := filepath.Ext(configFileName)[1:]
+// Give precedence to environment variables over configuration file's
+func GetConfigValue(configEnv *viper.Viper, configFile *viper.Viper, key string) (string) {
+	value := configEnv.GetString(key)
+	if value == "" {
+		value = configFile.GetString(key)
+	}
 
-	return path, file, ctype
+	return value
 }
 
 func main() {
@@ -58,13 +66,13 @@ func main() {
 		log.Fatalf("%s", err)
 	}
 
-	port := configEnv.GetString("port") || configFile.GetString("port")
+	port := GetConfigValue(configEnv, configFile, "port")
 	
 	if port == "" {
 		log.Fatalf("Port variable missing")
 	}
 
-	storage := configEnv.GetString("storage") || configFile.GetString("storage")
+	storage := GetConfigValue(configEnv, configFile, "storage")
 	
 	if storage == "" {
 		log.Fatalf("Storage variable missing")

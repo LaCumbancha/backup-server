@@ -123,7 +123,7 @@ func (bkpManager *BackupManager) handleConnections(client net.Conn) {
 		if backupClient.Ip == "" || backupClient.Port == "" || backupClient.Path == "" || backupClient.Freq == "" {
 			log.Errorf("Error receiving some backup mandatory fields. IP: %s; Port: %s; Path: '%s'; Frequency: %s.", backupClient.Ip, backupClient.Port, backupClient.Path, backupClient.Freq)
 
-			if _, err := writer.WriteString("Error receiving some backup mandatory fields (IP: %s; Port: %s; Path: '%s'; Frequency: %s). Please retry.\n", backupClient.Ip, backupClient.Port, backupClient.Path, backupClient.Freq); err != nil {
+			if _, err := writer.WriteString(fmt.Sprintf("Error receiving some backup mandatory fields (IP: \"%s\"; Port: \"%s\"; Path: \"%s\"; Frequency: \"%s\"). Please retry.\n", backupClient.Ip, backupClient.Port, backupClient.Path, backupClient.Freq)); err != nil {
 				log.Errorf("Error sending response to client from connection ('%s', %s)", ip, port, err)
 			} else {
 				writer.Flush()
