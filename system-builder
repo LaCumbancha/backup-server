@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+
+import sys
+import yaml
+
+backup_managers = int(sys.argv[1])
+backup_schedulers = int(sys.argv[2])
+echo_servers = int(sys.argv[3])
+
+file = {}
+
+# Setting version
+file['version'] = '3'
+
+# Setting services
+file['services'] = []
+
+for idx in range(1, backup_managers+1):
+	file['services'] += [{
+		f'bkp_manager{idx}': {
+			'container_name': f'bkp_manager{idx}',
+			'image': 'bkp_manager:latest',
+			'entrypoint': '/manager',
+			'environment': [
+				'BKPMNGR_IP=server',
+				'BKPMNGR_CONFIG_FILE=/config/initial-config.yaml'
+			],
+			'volumes': ['bkp_manager_vol:/config'],
+			'networks': ['testing_net']
+		}
+	}]
+
+for idx in range(1, echo_servers+1):
+	file['services'] += [{
+		f'echo_server{idx}': {
+			'container_name': f'echo_server{idx}',
+			'image': 'echo_server:latest',
+			'entrypoint': '/echo-server',
+			'environment': [
+				'APP_CONFIG_FILE=/config/initial-config.yaml'
+			],
+			'volumes': ['echo_server_vol:/config'],
+			'networks': ['testing_net']
+		}
+	}]
+
+# Setting volumes
+file['volumes'] = [
+	{
+		'bkp_manager_vol': {
+			'driver': 'local',
+			'driver_opt': {
+				'type': 'local',
+				'device': '$PWD/backup-manager/config',
+				'o': 'bind'
+			}
+		}
+	},
+	{
+		'echo_server_vol': {
+			'driver': 'local',
+			'driver_opt': {
+				'type': 'local',
+				'device': '$PWD/echo-server/config',
+				'o': 'bind'
+			}
+		}
+	}
+]
+
+# Setting networks
+file['networks'] = {
+	'testing_net': {
+		'ipam': {
+			'driver': 'default', 
+			'config': [
+				{'subnet': '172.25.125.0/24'}
+			]
+		}
+	}
+}
+
+with open('docker-compose-dev2.yaml', 'w') as outfile:
+    yaml.dump(file, outfile, default_flow_style=False)

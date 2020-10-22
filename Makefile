@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 PWD := $(shell pwd)
-ID := 1
+ECHOSV := 1
 
 GIT_REMOTE = github.com/LaCumbancha/backup-server
 
@@ -14,10 +14,12 @@ deps:
 
 build: deps
 	GOOS=linux go build -o bin/manager github.com/LaCumbancha/backup-server/backup-manager
+	GOOS=linux go build -o bin/echo-server github.com/LaCumbancha/backup-server/echo-server
 .PHONY: build
 
 docker-image:
 	docker build -f ./backup-manager/Dockerfile -t "bkp_manager:latest" .
+	docker build -f ./echo-server/Dockerfile -t "echo_server:latest" .
 .PHONY: docker-image
 
 docker-compose-up: docker-image
@@ -35,4 +37,8 @@ docker-compose-logs:
 
 docker-manager-shell:
 	docker container exec -it bkp_manager /bin/sh
+.PHONY: docker-manager-shell
+
+docker-echosv-shell:
+	docker container exec -it echo_server$(ECHOSV) /bin/sh
 .PHONY: docker-manager-shell

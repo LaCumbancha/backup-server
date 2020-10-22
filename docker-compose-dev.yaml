@@ -31,7 +31,7 @@ volumes:
       device: $PWD/backup-manager/config
       o: bind
 
-  bkp_manager_vol:
+  echo_server_vol:
     driver: local
     driver_opts:
       type: none
