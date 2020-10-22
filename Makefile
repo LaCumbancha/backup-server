@@ -1,8 +1,12 @@
 SHELL := /bin/bash
+PYTHON := /usr/bin/python3.8
 PWD := $(shell pwd)
-ECHOSV := 1
-
 GIT_REMOTE = github.com/LaCumbancha/backup-server
+
+ECHOSV := 1
+BKP_MANAGERS := 1
+BKP_SCHEDULERS := 1
+ECHO_SERVERS := 2
 
 default: build
 
@@ -18,6 +22,7 @@ build: deps
 .PHONY: build
 
 docker-image:
+	$(PYTHON) system-builder --bkp-managers=$(BKP_MANAGERS) --bkp-schedulers=$(BKP_SCHEDULERS) --echo-servers=$(ECHO_SERVERS)
 	docker build -f ./backup-manager/Dockerfile -t "bkp_manager:latest" .
 	docker build -f ./echo-server/Dockerfile -t "echo_server:latest" .
 .PHONY: docker-image
