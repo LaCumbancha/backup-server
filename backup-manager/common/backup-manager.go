@@ -15,7 +15,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-
 type BackupInformation struct {
 	Backups 	[]BackupClient 		`yaml:backups`
 }
@@ -38,12 +37,12 @@ type BackupManager struct {
 }
 
 func NewBackupManager(config BackupManagerConfig) *BackupManager {
-	BackupManager := &BackupManager {
+	backupManager := &BackupManager {
 		config: config,
 	}
 
-	go BackupManager.buildBackupStructure()
-	return BackupManager
+	go backupManager.buildBackupStructure()
+	return backupManager
 }
 
 func ParseAddress(address string) (string, string) {

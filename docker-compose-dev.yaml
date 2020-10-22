@@ -12,12 +12,30 @@ services:
     networks:
       - testing_net
 
+  echo_server1:
+    container_name: echo_server1
+    image: echo_server:latest
+    entrypoint: /echo-server
+    environment:
+      - APP_CONFIG_FILE=/config/initial-config.yaml
+    volumes:
+      - echo_server_vol:/config
+    networks:
+      - testing_net
+
 volumes:
   bkp_manager_vol:
     driver: local
     driver_opts:
       type: none
       device: $PWD/backup-manager/config
+      o: bind
+
+  bkp_manager_vol:
+    driver: local
+    driver_opts:
+      type: none
+      device: $PWD/echo-server/config
       o: bind
 
 networks:

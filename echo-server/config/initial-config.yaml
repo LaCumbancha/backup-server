@@ -1,0 +1,2 @@
+echo_port: 11000
+echo_storage: ./data/storage.file
