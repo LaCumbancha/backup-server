@@ -2,65 +2,40 @@ package common
 
 import (
 	"io"
-	"os"
 	"fmt"
 	"net"
 	"bufio"
-	"io/ioutil"
 	"encoding/json"
-	"gopkg.in/yaml.v2"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/LaCumbancha/backup-server/backup-manager/utils"
 )
 
-type BackupInformation struct {
-	Backups 	[]BackupClient 		`yaml:backups`
-}
-
-type BackupClient struct {
-	Ip 			string 				`yaml:"ip",omitempty`
-	Port 		string 				`yaml:"port",omitempty`
-	Path 		string 				`yaml:"path",omitempty`
-	Freq 		string 				`yaml:"freq",omitempty`
-}
-
 type BackupManagerConfig struct {
-	Port 		string
-	Storage		string
+	Port 			string
+	StoragePath		string
 }
 
 type BackupManager struct {
-	config 		BackupManagerConfig
-	conns   	chan net.Conn
+	port 			string
+	storage 		*BackupStorage
+	conns   		chan net.Conn
 }
 
 func NewBackupManager(config BackupManagerConfig) *BackupManager {
+	backupStorage := &BackupStorage {
+		path: 		config.StoragePath,
+	}
+
+	go backupStorage.BuildBackupStructure()
+
 	backupManager := &BackupManager {
-		config: config,
+		port: 		config.Port,
+		storage:	backupStorage,
 	}
 
-	go backupManager.buildBackupStructure()
 	return backupManager
-}
-
-func (bkpManager *BackupManager) buildBackupStructure() {
-	os.MkdirAll(bkpManager.config.Storage, os.ModePerm)
-
-	backups := BackupInformation {
-		Backups:	[]BackupClient{},
-	}
-
-	yamlOutput, err := yaml.Marshal(&backups)
-	if err != nil {
-		log.Fatalf("Error creating YAML for backups information file.", err)
-	}
-
-	err = ioutil.WriteFile(bkpManager.config.Storage + "/Information", yamlOutput, 0644)
-	if err != nil {
-		log.Fatalf("Error creating backups information file.", err)
-	}
 }
 
 // Accepting connections
@@ -91,7 +66,6 @@ func (bkpManager *BackupManager) acceptConnections(listener net.Listener) chan n
 // Saving new backup client
 func (bkpManager *BackupManager) handleConnections(client net.Conn) {
 	buffer := bufio.NewReader(client)
-	writer := bufio.NewWriter(client)
 
 	ip, port := utils.ParseAddress(client.RemoteAddr().String())
 
@@ -111,66 +85,35 @@ func (bkpManager *BackupManager) handleConnections(client net.Conn) {
 		var backupClient BackupClient
 		json.Unmarshal([]byte(strLine), &backupClient)
 
-		if backupClient.Ip == "" || backupClient.Port == "" || backupClient.Path == "" || backupClient.Freq == "" {
-			log.Errorf("Error receiving some backup mandatory fields. IP: %s; Port: %s; Path: '%s'; Frequency: %s.", backupClient.Ip, backupClient.Port, backupClient.Path, backupClient.Freq)
-
-			if _, err := writer.WriteString(fmt.Sprintf("Error receiving some backup mandatory fields (IP: \"%s\"; Port: \"%s\"; Path: \"%s\"; Frequency: \"%s\"). Please retry.\n", backupClient.Ip, backupClient.Port, backupClient.Path, backupClient.Freq)); err != nil {
-				log.Errorf("Error sending response to client from connection ('%s', %s)", ip, port, err)
-			} else {
-				writer.Flush()
-			}
-			
+		if bkpManager.validateBackupRequest(backupClient) {
+			outputMessage := bkpManager.processBackupRequest(backupClient)
+			utils.SocketWrite(outputMessage, client)
 		} else {
-
-			log.Infof("New backup client request, with IP %s, port %s, path %s and frequency %s", backupClient.Ip, backupClient.Port, backupClient.Path, backupClient.Freq)
-			bkpManager.updateBackupsInfo(backupClient)
-
-			if _, err := writer.WriteString("New backup client request successfully added.\n"); err != nil {
-				log.Errorf("Error sending response to client from connection ('%s', %s)", ip, port, err)
-			} else {
-				writer.Flush()
-			}
-
+			outputMessage := fmt.Sprintf("Some request mandatory fields are missing. Message received: %s", strLine)
+			utils.SocketWrite(outputMessage, client)
 		}
 	}
 }
 
-// Update backup information
-func (bkpManager *BackupManager) updateBackupsInfo(backupClient BackupClient) {
-	// Read file content
-	content, err := ioutil.ReadFile(bkpManager.config.Storage + "/Information")
-    if err != nil {
-        log.Fatalf("Error reading backups information file.", err)
-    }
-
-    // Unmarshall YAML file
-    backups := BackupInformation{}
-    err = yaml.Unmarshal(content, &backups)
-    if err != nil {
-		log.Fatalf("Error creating YAML for backups information file.", err)
+func (bkpManager *BackupManager) validateBackupRequest(backupRequest BackupClient) bool {
+	if backupRequest.Ip == "" || backupRequest.Port == "" || backupRequest.Path == "" || backupRequest.Freq == "" {
+		log.Errorf("Error receiving some REGISTER mandatory fields. IP: %s; Port: %s; Path: '%s'; Frequency: %s.", backupRequest.Ip, backupRequest.Port, backupRequest.Path, backupRequest.Freq)
+		return false
 	}
 
-	newBackups := BackupInformation{ Backups:	append(backups.Backups, backupClient) }
-	yamlOutput, err := yaml.Marshal(&newBackups)
-	if err != nil {
-		log.Fatalf("Error creating YAML for backups information file.", err)
-	}
-
-	err = ioutil.WriteFile(bkpManager.config.Storage + "/Information", yamlOutput, 0644)
-	if err != nil {
-		log.Fatalf("Error creating backups information file.", err)
-	}
-
-	log.Infof("New backup client added with: IP %s; Port %s; Path \"%s\"; Frequency %s.", backupClient.Ip, backupClient.Port, backupClient.Path, backupClient.Freq)
+	return true
 }
 
+func (bkpManager *BackupManager) processBackupRequest(backupRequest BackupClient) string {
+	bkpManager.storage.UpdateBackupInfo(backupRequest)
+	log.Infof("New backup client request, with IP %s, port %s, path %s and frequency %s", backupRequest.Ip, backupRequest.Port, backupRequest.Path, backupRequest.Freq)
+	return "New backup client request successfully added.\n"
+}
 
-// Run start listening for client messages
 func (bkpManager *BackupManager) Run() {
-	// Create BackupManager
-	listener, err := net.Listen("tcp", ":" + bkpManager.config.Port)
+	listener, err := net.Listen("tcp", ":" + bkpManager.port)
 	if listener == nil || err != nil {
-		log.Fatalf("Error creating TCP BackupManager socket at port %s.", bkpManager.config.Port, err)
+		log.Fatalf("Error creating TCP BackupManager socket at port %s.", bkpManager.port, err)
 	}
 
 	// Start processing connections

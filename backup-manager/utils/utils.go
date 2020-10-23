@@ -1,9 +1,13 @@
 package utils
 
 import (
+	"net"
+	"bufio"
 	"strings"
 	"path/filepath"
 	"github.com/spf13/viper"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // Get configuration file's path structure. 
@@ -32,4 +36,16 @@ func ParseAddress(address string) (string, string) {
 	port := split[1]
 
 	return ip, port
+}
+
+// Write to socket
+func SocketWrite(message string, socket net.Conn) {
+	writer := bufio.NewWriter(socket)
+	ip, port := ParseAddress(socket.RemoteAddr().String())
+
+	if _, err := writer.WriteString(message); err != nil {
+		log.Errorf("Error sending message to client from connection ('%s', %s). Message: %s", ip, port, message, err)
+	} else {
+		writer.Flush()
+	}
 }

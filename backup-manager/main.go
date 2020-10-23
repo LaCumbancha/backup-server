@@ -61,8 +61,8 @@ func main() {
 	}
 
 	managerConfig := common.BackupManagerConfig {
-		Port: 		port,
-		Storage: 	storage,
+		Port: 			port,
+		StoragePath: 	storage,
 	}
 
 	backupManager := common.NewBackupManager(managerConfig)
