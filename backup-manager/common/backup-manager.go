@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"net"
 	"bufio"
-	"strings"
-
 	"io/ioutil"
 	"encoding/json"
 	"gopkg.in/yaml.v2"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/LaCumbancha/backup-server/backup-manager/utils"
 )
 
 type BackupInformation struct {
@@ -28,7 +28,7 @@ type BackupClient struct {
 
 type BackupManagerConfig struct {
 	Port 		string
-	Storage	string
+	Storage		string
 }
 
 type BackupManager struct {
@@ -43,14 +43,6 @@ func NewBackupManager(config BackupManagerConfig) *BackupManager {
 
 	go backupManager.buildBackupStructure()
 	return backupManager
-}
-
-func ParseAddress(address string) (string, string) {
-	split := strings.Split(address, ":")
-	ip := split[0]
-	port := split[1]
-
-	return ip, port
 }
 
 func (bkpManager *BackupManager) buildBackupStructure() {
@@ -85,7 +77,7 @@ func (bkpManager *BackupManager) acceptConnections(listener net.Listener) chan n
 				continue
 			}
 
-			ip, port := ParseAddress(client.RemoteAddr().String())
+			ip, port := utils.ParseAddress(client.RemoteAddr().String())
 			log.Infof("Got connection from ('%s', %s).", ip, port)
 
 			channel <- client
@@ -101,7 +93,7 @@ func (bkpManager *BackupManager) handleConnections(client net.Conn) {
 	buffer := bufio.NewReader(client)
 	writer := bufio.NewWriter(client)
 
-	ip, port := ParseAddress(client.RemoteAddr().String())
+	ip, port := utils.ParseAddress(client.RemoteAddr().String())
 
 	for {
 		line, err := buffer.ReadBytes('\n')

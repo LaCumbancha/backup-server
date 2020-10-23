@@ -4,6 +4,7 @@ PWD := $(shell pwd)
 GIT_REMOTE = github.com/LaCumbancha/backup-server
 
 ECHOSV := 1
+MANAGER := 1
 BKP_MANAGERS := 1
 BKP_SCHEDULERS := 1
 ECHO_SERVERS := 2
@@ -41,7 +42,7 @@ docker-compose-logs:
 .PHONY: docker-compose-logs
 
 docker-manager-shell:
-	docker container exec -it bkp_manager /bin/sh
+	docker container exec -it bkp_manager$(MANAGER) /bin/sh
 .PHONY: docker-manager-shell
 
 docker-echosv-shell:
