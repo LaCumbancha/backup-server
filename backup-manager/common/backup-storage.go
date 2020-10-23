@@ -14,10 +14,6 @@ type BackupStorage struct {
 	path		string	
 }
 
-type BackupInformation struct {
-	Backups 	map[string]BackupRegister 	`yaml:backups`
-}
-
 type BackupRequest struct {
 	Verb		string
 	Args		BackupRegister
@@ -52,24 +48,24 @@ func (bkpStorage *BackupStorage) AddBackupClient(backupRegister BackupRegister) 
     }
 
     // Unmarshall YAML file
-    backups := BackupInformation{}
+    var backups map[string]BackupRegister
     err = yaml.Unmarshal(content, &backups)
     if err != nil {
 		log.Fatalf("Error creating YAML for backups information file.", err)
 	}
 
-	if backups.Backups == nil {
-		backups.Backups = make(map[string]BackupRegister)
+	if backups == nil {
+		backups = make(map[string]BackupRegister)
 	}
 
 	backupRegisterId := AsSha256(backupRegister)
 
-	if _, ok := backups.Backups[backupRegisterId]; ok {
+	if _, ok := backups[backupRegisterId]; ok {
 		log.Infof("Trying to add a backup client with ID %s that was already registered.", backupRegisterId)
 		return "Couldn't add new backup client because it already was registered.\n"
 	}
 		
-	backups.Backups[backupRegisterId] = backupRegister
+	backups[backupRegisterId] = backupRegister
 
 	yamlOutput, err := yaml.Marshal(&backups)
 	if err != nil {
@@ -93,7 +89,7 @@ func (bkpStorage *BackupStorage) RemoveBackupClient(backupUnregister BackupRegis
     }
 
     // Unmarshall YAML file
-    backups := BackupInformation{}
+    var backups map[string]BackupRegister
     err = yaml.Unmarshal(content, &backups)
     if err != nil {
 		log.Fatalf("Error creating YAML for backups information file.", err)
@@ -101,12 +97,12 @@ func (bkpStorage *BackupStorage) RemoveBackupClient(backupUnregister BackupRegis
 
 	backupUnregisterId := AsSha256(backupUnregister)
 
-	if _, ok := backups.Backups[backupUnregisterId]; !ok {
+	if _, ok := backups[backupUnregisterId]; !ok {
 		log.Infof("Trying to remove a backup client with ID %s that was not registered.", backupUnregisterId)
 		return "Couldn't remove the backup client because it was not registered.\n"
 	}
 
-	delete(backups.Backups, backupUnregisterId)
+	delete(backups, backupUnregisterId)
 
 	yamlOutput, err := yaml.Marshal(&backups)
 	if err != nil {
@@ -125,5 +121,5 @@ func (bkpStorage *BackupStorage) RemoveBackupClient(backupUnregister BackupRegis
 func AsSha256(backupRegister BackupRegister) string {
 	hasher := sha256.New()
 	hasher.Write([]byte(fmt.Sprintf("%v-%v-%v", backupRegister.Ip, backupRegister.Port, backupRegister.Path)))
-	return fmt.Sprintf("%x", hasher.Sum(nil))[:7]
+	return fmt.Sprintf("%x", hasher.Sum(nil))[:11]
 }
