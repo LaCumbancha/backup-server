@@ -12,6 +12,10 @@ import (
 	"github.com/LaCumbancha/backup-server/backup-manager/utils"
 )
 
+const ADD_BACKUP = "REGISTER"
+const QUERY_BACKUP = "QUERY"
+const REMOVE_BACKUP = "UNREGISTER"
+
 type BackupManagerConfig struct {
 	Port 			string
 	StoragePath		string
@@ -82,32 +86,73 @@ func (bkpManager *BackupManager) handleConnections(client net.Conn) {
 		strLine := string(line)
 		log.Infof("Message received from connection ('%s', %s). Msg: %s", ip, port, strLine)
 
-		var backupClient BackupClient
-		json.Unmarshal([]byte(strLine), &backupClient)
+		var backupRequest BackupRequest
+		json.Unmarshal([]byte(strLine), &backupRequest)
 
-		if bkpManager.validateBackupRequest(backupClient) {
-			outputMessage := bkpManager.processBackupRequest(backupClient)
+		if bkpManager.validateBackupRequest(backupRequest) {
+			outputMessage := bkpManager.processBackupRequest(backupRequest)
 			utils.SocketWrite(outputMessage, client)
 		} else {
-			outputMessage := fmt.Sprintf("Some request mandatory fields are missing. Message received: %s", strLine)
+			outputMessage := fmt.Sprintf("Some mandatory fields are missing. Message received: %s", strLine)
 			utils.SocketWrite(outputMessage, client)
 		}
 	}
 }
 
-func (bkpManager *BackupManager) validateBackupRequest(backupRequest BackupClient) bool {
-	if backupRequest.Ip == "" || backupRequest.Port == "" || backupRequest.Path == "" || backupRequest.Freq == "" {
-		log.Errorf("Error receiving some REGISTER mandatory fields. IP: %s; Port: %s; Path: '%s'; Frequency: %s.", backupRequest.Ip, backupRequest.Port, backupRequest.Path, backupRequest.Freq)
+func (bkpManager *BackupManager) validateBackupRequest(backupRequest BackupRequest) bool {
+	switch backupRequest.Verb {
+	case ADD_BACKUP:
+		backupRegister := backupRequest.Args
+
+		if backupRegister.Ip == "" || backupRegister.Port == "" || backupRegister.Path == "" || backupRegister.Freq == "" {
+			log.Errorf("Error receiving some REGISTER mandatory fields. IP: '%s'; Port: '%s'; Path: '%s'; Frequency: '%s'.", backupRegister.Ip, backupRegister.Port, backupRegister.Path, backupRegister.Freq)
+			return false
+		}
+	case QUERY_BACKUP:
+		backupQuery := backupRequest.Args
+
+		if backupQuery.Ip == "" || backupQuery.Port == "" || backupQuery.Path == "" {
+			log.Errorf("Error receiving some QUERY mandatory fields. IP: '%s'; Port: '%s'; Path: '%s'", backupQuery.Ip, backupQuery.Port, backupQuery.Path)
+			return false
+		}
+	case REMOVE_BACKUP:
+		backupUnregister := backupRequest.Args
+
+		if backupUnregister.Ip == "" || backupUnregister.Port == "" || backupUnregister.Path == "" {
+			log.Errorf("Error receiving some UNREGISTER mandatory fields. IP: '%s'; Port: '%s'; Path: '%s'", backupUnregister.Ip, backupUnregister.Port, backupUnregister.Path)
+			return false
+		}
+	default:
+		log.Errorf("Verb not recognized: %s.", backupRequest.Verb)
 		return false
 	}
-
+	
 	return true
 }
 
-func (bkpManager *BackupManager) processBackupRequest(backupRequest BackupClient) string {
-	bkpManager.storage.UpdateBackupInfo(backupRequest)
-	log.Infof("New backup client request, with IP %s, port %s, path %s and frequency %s", backupRequest.Ip, backupRequest.Port, backupRequest.Path, backupRequest.Freq)
-	return "New backup client request successfully added.\n"
+func (bkpManager *BackupManager) processBackupRequest(backupRequest BackupRequest) string {
+	switch backupRequest.Verb {
+	case ADD_BACKUP:
+		backupRegister := backupRequest.Args
+
+		log.Infof("New REGISTER backup client request received, with IP '%s', port '%s', path '%s' and frequency '%s'.", backupRegister.Ip, backupRegister.Port, backupRegister.Path, backupRegister.Freq)
+		return bkpManager.storage.AddBackupClient(backupRegister)
+	case QUERY_BACKUP:
+		backupQuery := backupRequest.Args
+
+		// TODO
+		log.Infof("New QUERY request received, for backup with IP '%s', port '%s' and path '%s'.", backupQuery.Ip, backupQuery.Port, backupQuery.Path)
+		return "Query result!\n"
+	case REMOVE_BACKUP:
+		backupRegister := backupRequest.Args
+
+		log.Infof("New UNREGISTER backup client request received, with IP '%s', port '%s' and path '%s'.", backupRegister.Ip, backupRegister.Port, backupRegister.Path)
+		return bkpManager.storage.RemoveBackupClient(backupRegister)
+	default:
+		log.Fatalf("Flow forbidden.")
+	}
+
+	return "Flow forbidden."
 }
 
 func (bkpManager *BackupManager) Run() {
