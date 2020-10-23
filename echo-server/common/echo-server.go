@@ -2,57 +2,41 @@ package common
 
 import (
 	"io"
-	"os"
 	"net"
 	"bufio"
-	"strings"
-	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/LaCumbancha/backup-server/echo-server/utils"
 )
 
 type EchoServerConfig struct {
-	Port 		string
-	Storage		string
+	Port 			string
+	StorageFile		string
 }
 
 type EchoServer struct {
-	config 		EchoServerConfig
+	port 		string
+	storage 	*EchoStorage
 	conns   	chan net.Conn
 }
 
 func NewEchoServer(config EchoServerConfig) *EchoServer {
-	server := &EchoServer {
-		config: config,
+	echoStorage := &EchoStorage {
+		file: 		config.StorageFile,
 	}
 
-	server.buildStorageFile()
+	go echoStorage.BuildStorageFile()
+
+	server := &EchoServer {
+		port: 		config.Port,
+		storage:	echoStorage,
+	}
+	
 	return server
 }
 
-func (es *EchoServer) buildStorageFile() {
-	err := os.MkdirAll(filepath.Dir(es.config.Storage), os.ModePerm)
-	if err != nil {
-		log.Fatalf("Error creating EchoStorage directory.", err)
-	}
-
-	file, err := os.Create(es.config.Storage)
-	if err != nil {
-		log.Fatalf("Error creating EchoStorage file.", err)
-	}
-
-	file.Close()
-}
-
-func ParseAddress(address string) (string, string) {
-	split := strings.Split(address, ":")
-	ip := split[0]
-	port := split[1]
-
-	return ip, port
-}
-
-func (es *EchoServer) acceptConnections(listener net.Listener) chan net.Conn {
+func (echoServer *EchoServer) acceptConnections(listener net.Listener) chan net.Conn {
 	channel := make(chan net.Conn)
 
 	go func() {
@@ -64,7 +48,7 @@ func (es *EchoServer) acceptConnections(listener net.Listener) chan net.Conn {
 				continue
 			}
 
-			ip, port := ParseAddress(client.RemoteAddr().String())
+			ip, port := utils.ParseAddress(client.RemoteAddr().String())
 			log.Infof("Got connection from ('%s', %s).", ip, port)
 
 			channel <- client
@@ -75,9 +59,9 @@ func (es *EchoServer) acceptConnections(listener net.Listener) chan net.Conn {
 	return channel
 }
 
-func (es *EchoServer) handleConnections(client net.Conn) {
+func (echoServer *EchoServer) handleConnections(client net.Conn) {
 	buffer := bufio.NewReader(client)
-	ip, port := ParseAddress(client.RemoteAddr().String())
+	ip, port := utils.ParseAddress(client.RemoteAddr().String())
 
 	for {
 		line, err := buffer.ReadBytes('\n')
@@ -92,39 +76,23 @@ func (es *EchoServer) handleConnections(client net.Conn) {
 		strLine := string(line)
 		log.Infof("Message received from connection ('%s', %s). Msg: %s", ip, port, strLine)
 
-		es.updateStoredFile(strLine)
+		echoServer.storage.UpdateStorage(strLine)
 		client.Write(line)
 	}
 }
 
-func (es *EchoServer) updateStoredFile(line string) {
-	file, err := os.OpenFile(es.config.Storage, os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-        log.Fatalf("Error opening storage file.", err)
-    }
-
-    defer file.Close()
- 
-    _, err = file.WriteString(line)
-    if err != nil {
-        log.Fatalf("Error writing storage file.", err)
-    }
-
-    log.Infof("New message stored in server: %s.", line)
-}
-
-func (es *EchoServer) Run() {
+func (echoServer *EchoServer) Run() {
 	// Create server
-	listener, err := net.Listen("tcp", ":" + es.config.Port)
+	listener, err := net.Listen("tcp", ":" + echoServer.port)
 	if listener == nil || err != nil {
-		log.Fatalf("[SERVER] Error creating TCP server socket at port %s.", es.config.Port)
+		log.Fatalf("[SERVER] Error creating TCP server socket at port %s.", echoServer.port)
 	}
 
 	// Start processing connections
-	es.conns = es.acceptConnections(listener)
+	echoServer.conns = echoServer.acceptConnections(listener)
 
 	// Start parallel messages echo
 	for {
-		go es.handleConnections(<-es.conns)
+		go echoServer.handleConnections(<-echoServer.conns)
 	}
 }

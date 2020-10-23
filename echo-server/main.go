@@ -3,21 +3,13 @@ package main
 import (
 	"fmt"
 	"log"
-	"path/filepath"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
+	"github.com/LaCumbancha/backup-server/echo-server/utils"
 	"github.com/LaCumbancha/backup-server/echo-server/common"
 )
-
-func GetConfigFile(configFileName string) (string, string, string) {
-	path := filepath.Dir(configFileName)
-	file := filepath.Base(configFileName)
-	ctype := filepath.Ext(configFileName)[1:]
-
-	return path, file, ctype
-}
 
 func InitConfig() (*viper.Viper, *viper.Viper, error) {
 	configEnv := viper.New()
@@ -34,7 +26,7 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 	// Read config file if it's present
 	var configFile = viper.New()
 	if configFileName := configEnv.GetString("config_file"); configFileName != "" {
-		path, file, ctype := GetConfigFile(configFileName)
+		path, file, ctype := utils.GetConfigFile(configFileName)
 
 		configFile.SetConfigName(file)
 		configFile.SetConfigType(ctype)
@@ -49,16 +41,6 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 	return configEnv, configFile, nil
 }
 
-// Give precedence to environment variables over configuration file's
-func GetConfigValue(configEnv *viper.Viper, configFile *viper.Viper, key string) (string) {
-	value := configEnv.GetString(key)
-	if value == "" {
-		value = configFile.GetString(key)
-	}
-
-	return value
-}
-
 func main() {
 	configEnv, configFile, err := InitConfig()
 
@@ -66,21 +48,21 @@ func main() {
 		log.Fatalf("%s", err)
 	}
 
-	port := GetConfigValue(configEnv, configFile, "echo_port")
+	port := utils.GetConfigValue(configEnv, configFile, "echo_port")
 	
 	if port == "" {
 		log.Fatalf("EchoPort variable missing")
 	}
 
-	storage := GetConfigValue(configEnv, configFile, "echo_storage")
+	storage := utils.GetConfigValue(configEnv, configFile, "echo_storage")
 	
 	if storage == "" {
 		log.Fatalf("Storage variable missing")
 	}
 
 	serverConfig := common.EchoServerConfig {
-		Port: 		port,
-		Storage:	storage,
+		Port: 			port,
+		StorageFile:	storage,
 	}
 
 	server := common.NewEchoServer(serverConfig)
