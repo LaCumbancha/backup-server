@@ -7,7 +7,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
+	"github.com/LaCumbancha/backup-server/echo-server/backup"
 	"github.com/LaCumbancha/backup-server/echo-server/utils"
+	"github.com/LaCumbancha/backup-server/echo-server/server"
 	"github.com/LaCumbancha/backup-server/echo-server/common"
 )
 
@@ -20,7 +22,8 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 
 	// Add env variables supported
 	configEnv.BindEnv("echo", "port")
-	configEnv.BindEnv("echo", "storage")
+	configEnv.BindEnv("backup", "port")
+	configEnv.BindEnv("storage", "path")
 	configEnv.BindEnv("config", "file")
 
 	// Read config file if it's present
@@ -48,23 +51,37 @@ func main() {
 		log.Fatalf("%s", err)
 	}
 
-	port := utils.GetConfigValue(configEnv, configFile, "echo_port")
+	echoPort := utils.GetConfigValue(configEnv, configFile, "echo_port")
 	
-	if port == "" {
+	if echoPort == "" {
 		log.Fatalf("EchoPort variable missing")
 	}
 
-	storage := utils.GetConfigValue(configEnv, configFile, "echo_storage")
+	backupPort := utils.GetConfigValue(configEnv, configFile, "backup_port")
+	
+	if backupPort == "" {
+		log.Fatalf("BackupPort variable missing")
+	}
+
+	storage := utils.GetConfigValue(configEnv, configFile, "storage_path")
 	
 	if storage == "" {
-		log.Fatalf("Storage variable missing")
+		log.Fatalf("StoragePath variable missing")
 	}
 
-	serverConfig := common.EchoServerConfig {
-		Port: 			port,
-		StorageFile:	storage,
+	backupServerConfig := common.ServerConfig {
+		Port: 			backupPort,
+		StoragePath:	storage,
 	}
 
-	server := common.NewEchoServer(serverConfig)
-	server.Run()
+	backupServer := backup.NewBackupServer(backupServerConfig)
+	go backupServer.Run()
+
+	echoServerConfig := common.ServerConfig {
+		Port: 			echoPort,
+		StoragePath:	storage,
+	}
+
+	echoServer := server.NewEchoServer(echoServerConfig)
+	echoServer.Run()
 }

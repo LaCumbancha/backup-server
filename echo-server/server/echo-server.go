@@ -1,4 +1,4 @@
-package common
+package server
 
 import (
 	"io"
@@ -7,30 +7,26 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/LaCumbancha/backup-server/echo-server/common"
 	"github.com/LaCumbancha/backup-server/echo-server/utils"
 )
 
-type EchoServerConfig struct {
-	Port 			string
-	StorageFile		string
-}
-
 type EchoServer struct {
 	port 		string
-	storage 	*EchoStorage
+	storage 	*common.StorageManager
 	conns   	chan net.Conn
 }
 
-func NewEchoServer(config EchoServerConfig) *EchoServer {
-	echoStorage := &EchoStorage {
-		file: 		config.StorageFile,
+func NewEchoServer(config common.ServerConfig) *EchoServer {
+	storageManager := &common.StorageManager {
+		Path: 		config.StoragePath,
 	}
 
-	go echoStorage.BuildStorageFile()
+	go storageManager.BuildStorage()
 
 	server := &EchoServer {
 		port: 		config.Port,
-		storage:	echoStorage,
+		storage:	storageManager,
 	}
 	
 	return server

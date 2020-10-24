@@ -18,8 +18,8 @@ deps:
 	go mod vendor
 
 build: deps
-	GOOS=linux go build -o bin/manager github.com/LaCumbancha/backup-server/backup-manager
-	GOOS=linux go build -o bin/echo-server github.com/LaCumbancha/backup-server/echo-server
+	GOOS=linux go build -o bin/manager $(GIT_REMOTE)/backup-manager
+	GOOS=linux go build -o bin/echo-server $(GIT_REMOTE)/echo-server
 .PHONY: build
 
 docker-image:
