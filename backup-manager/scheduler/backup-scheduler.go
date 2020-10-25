@@ -12,12 +12,14 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/LaCumbancha/backup-server/backup-manager/utils"
 	"github.com/LaCumbancha/backup-server/backup-manager/common"
 )
 
 const BUFFER_BACKUP_SIZE = 10
 const BUFFER_BACKUP = 1024
-const BACKUP_WINDOW = 10
+const BUFFER_ETAG = 16
+const BACKUP_TIME_WINDOW = 10
 
 type BackupSchedulerConfig struct {
 	Port 			string
@@ -92,8 +94,8 @@ func (bkpScheduler *BackupScheduler) checkBackups() chan BackupRequest {
 			log.Debugf("Finishing backup window at %s.", initialTime.String())
 
 			// Sleeping to complete the 5 seconds period.
-			sleepTime := endTime.Add(time.Second * BACKUP_WINDOW).Sub(initialTime)
-			log.Debugf("Setting new backup window at %s.", endTime.Add(time.Second * BACKUP_WINDOW))
+			sleepTime := endTime.Add(time.Second * BACKUP_TIME_WINDOW).Sub(initialTime)
+			log.Debugf("Setting new backup window at %s.", endTime.Add(time.Second * BACKUP_TIME_WINDOW))
 			time.Sleep(sleepTime)
 		}
 	}()
@@ -106,6 +108,7 @@ func (bkpScheduler *BackupScheduler) handleBackupConnection(backupRequest Backup
 	etag := bkpScheduler.storage.GenerateEtag(backupRequest.Id)
 	log.Infof("Requesting new backup to client %s with etag '%s'", backupRequest.Id, etag)
 
+	
 	conn, err := net.Dial("tcp", backupRequest.Ip + ":" + backupRequest.Port)
 	if err != nil {
 		log.Errorf("Couldn't stablish connection with client %s", backupRequest.Ip)
@@ -113,17 +116,26 @@ func (bkpScheduler *BackupScheduler) handleBackupConnection(backupRequest Backup
 	}
 	defer conn.Close()
 
+	// Sending etag
+	etagMessage := utils.FillString(etag, BUFFER_ETAG)
+	
+	conn.Write([]byte(etagMessage))
+	log.Infof("Sending etag '%s' to backup connection ('%s', %s).", etag, backupRequest.Ip, backupRequest.Port)
+	log.Debugf("Sending message '%b' to backup connection ('%s', %s).", etagMessage, backupRequest.Ip, backupRequest.Port)
+
+	// Receiving backup
 	bufferFileSize := make([]byte, BUFFER_BACKUP_SIZE)
 	_, err = conn.Read(bufferFileSize)
 	if err != nil {
-		log.Errorf("Error backup size from client %s.", backupRequest.Id)
+		log.Errorf("Error receiving backup size from client %s.", backupRequest.Id)
 	}
 
-	fileSize, err := strconv.ParseInt(strings.Trim(string(bufferFileSize), ":"), 10, 64)
+	fileSize, err := strconv.ParseInt(utils.UnfillString(bufferFileSize), 10, 64)
 	if err != nil {
 		log.Errorf("Error parsing backup file size from client %s.", backupRequest.Id)
 		return
 	}
+	log.Infof("Received backup file (%d) size from connection ('%s', %s).", fileSize, backupRequest.Ip, backupRequest.Port)
 
 	if fileSize == 0 {
 		log.Infof("Current backup etag matches with current client %s etag, no information is transfered.", backupRequest.Id)

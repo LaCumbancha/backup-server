@@ -8,6 +8,8 @@ import (
 	"github.com/spf13/viper"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/LaCumbancha/backup-server/backup-manager/common"
 )
 
 // Get configuration file's path structure. 
@@ -48,4 +50,15 @@ func SocketWrite(message string, socket net.Conn) {
 	} else {
 		writer.Flush()
 	}
+}
+
+// Fill string with '|' for packange sending
+func FillString(message string, size int) string {
+	missingPositions := size - len(message)
+	return message + strings.Repeat(PADDING_CHARACTER, missingPositions)
+}
+
+// Remove padding '|'
+func UnfillString(message []byte) string {
+	return strings.TrimSuffix(string(message), PADDING_CHARACTER)
 }
