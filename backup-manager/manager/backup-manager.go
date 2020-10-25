@@ -1,4 +1,4 @@
-package common
+package manager
 
 import (
 	"io"
@@ -10,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/LaCumbancha/backup-server/backup-manager/utils"
+	"github.com/LaCumbancha/backup-server/backup-manager/common"
 )
 
 const ADD_BACKUP = "REGISTER"
@@ -18,25 +19,19 @@ const REMOVE_BACKUP = "UNREGISTER"
 
 type BackupManagerConfig struct {
 	Port 			string
-	StoragePath		string
+	Storage 		*common.BackupStorage
 }
 
 type BackupManager struct {
 	port 			string
-	storage 		*BackupStorage
+	storage 		*common.BackupStorage
 	conns   		chan net.Conn
 }
 
 func NewBackupManager(config BackupManagerConfig) *BackupManager {
-	backupStorage := &BackupStorage {
-		path: 		config.StoragePath,
-	}
-
-	go backupStorage.BuildBackupStructure()
-
 	backupManager := &BackupManager {
 		port: 		config.Port,
-		storage:	backupStorage,
+		storage:	config.Storage,
 	}
 
 	return backupManager
@@ -86,7 +81,7 @@ func (bkpManager *BackupManager) handleConnections(client net.Conn) {
 		strLine := string(line)
 		log.Infof("Message received from connection ('%s', %s). Msg: %s", ip, port, strLine)
 
-		var backupRequest BackupRequest
+		var backupRequest common.BackupRequest
 		json.Unmarshal([]byte(strLine), &backupRequest)
 
 		if bkpManager.validateBackupRequest(backupRequest) {
@@ -99,7 +94,7 @@ func (bkpManager *BackupManager) handleConnections(client net.Conn) {
 	}
 }
 
-func (bkpManager *BackupManager) validateBackupRequest(backupRequest BackupRequest) bool {
+func (bkpManager *BackupManager) validateBackupRequest(backupRequest common.BackupRequest) bool {
 	switch backupRequest.Verb {
 	case ADD_BACKUP:
 		backupRegister := backupRequest.Args
@@ -130,7 +125,7 @@ func (bkpManager *BackupManager) validateBackupRequest(backupRequest BackupReque
 	return true
 }
 
-func (bkpManager *BackupManager) processBackupRequest(backupRequest BackupRequest) string {
+func (bkpManager *BackupManager) processBackupRequest(backupRequest common.BackupRequest) string {
 	switch backupRequest.Verb {
 	case ADD_BACKUP:
 		backupRegister := backupRequest.Args

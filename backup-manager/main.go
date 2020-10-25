@@ -2,13 +2,15 @@ package main
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/LaCumbancha/backup-server/backup-manager/utils"
 	"github.com/LaCumbancha/backup-server/backup-manager/common"
+	"github.com/LaCumbancha/backup-server/backup-manager/manager"
+	"github.com/LaCumbancha/backup-server/backup-manager/scheduler"
 )
 
 func InitConfig() (*viper.Viper, *viper.Viper, error) {
@@ -42,6 +44,7 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 }
 
 func main() {
+	log.SetLevel(log.DebugLevel)
 	configEnv, configFile, err := InitConfig()
 
 	if err != nil {
@@ -54,17 +57,31 @@ func main() {
 		log.Fatalf("Port variable missing")
 	}
 
-	storage := utils.GetConfigValue(configEnv, configFile, "storage")
+	storagePath := utils.GetConfigValue(configEnv, configFile, "storage")
 	
-	if storage == "" {
+	if storagePath == "" {
 		log.Fatalf("Storage variable missing")
 	}
 
-	managerConfig := common.BackupManagerConfig {
-		Port: 			port,
-		StoragePath: 	storage,
+	backupStorageConfig := common.BackupStorageConfig {
+		Path: 			storagePath,
 	}
 
-	backupManager := common.NewBackupManager(managerConfig)
+	backupStorage := common.NewBackupStorage(backupStorageConfig)
+	backupStorage.BuildBackupStructure()
+
+	backupSchedulerConfig := scheduler.BackupSchedulerConfig {
+		Storage:		backupStorage,
+	}
+
+	backupScheduler := scheduler.NewBackupScheduler(backupSchedulerConfig)
+	go backupScheduler.Run()
+
+	managerConfig := manager.BackupManagerConfig {
+		Port: 			port,
+		Storage: 		backupStorage,
+	}
+
+	backupManager := manager.NewBackupManager(managerConfig)
 	backupManager.Run()
 }
