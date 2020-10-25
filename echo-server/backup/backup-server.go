@@ -17,6 +17,7 @@ import (
 
 const BUFFER_BACKUP_FILE_SIZE = 10
 const BUFFER_BACKUP = 1024
+const BUFFER_ETAG = 16
 
 type BackupServer struct {
 	port 		string
@@ -45,19 +46,20 @@ func (backupServer *BackupServer) listenBackups(listener net.Listener) {
 			continue
 		}
 
-		buffer := bufio.NewReader(client)
 		ip, port := utils.ParseAddress(client.RemoteAddr().String())
 		log.Infof("Got backup connection from ('%s', %s).", ip, port)
 
-		line, err := buffer.ReadBytes('\n')
+		etagBuffer := make([]byte, BUFFER_ETAG)
+		_, err = client.Read(etagBuffer)
 		if err == io.EOF {
 			log.Infof("Backup connection ('%s', %s) closed.", ip, port)
 			break
 		} else if err != nil {
-			log.Errorf("Couldn't read line", err)
+			log.Errorf("Error receiving etag from backup scheduler.", error)
+			return
 		}
 
-		receivedEtag := strings.TrimSuffix(string(line), "\n")
+		receivedEtag := utils.UnfillString(line)
 		log.Infof("Backup request received from connection ('%s', %s). E-Tag: %s", ip, port, receivedEtag)
 		backupServer.handleBackup(client, receivedEtag)
 	}
@@ -85,13 +87,14 @@ func (backupServer *BackupServer) sendBackupFile(client net.Conn, backupFile *os
 	}
 
 	ip, port := utils.ParseAddress(client.RemoteAddr().String())
-	fileSize := utils.FillString(strconv.FormatInt(fileInfo.Size(), 10), BUFFER_BACKUP_FILE_SIZE)
+	fileSize := strconv.FormatInt(fileInfo.Size(), 10)
+	fileSizeMessage := utils.FillString(strconv.FormatInt(fileInfo.Size(), 10), BUFFER_BACKUP_FILE_SIZE)
 	
-	client.Write([]byte(fileSize))
+	client.Write([]byte(fileSizeMessage))
 	log.Infof("Sending backup file size to connection ('%s', %s).", ip, port)
 	
 	sendBuffer := make([]byte, BUFFER_BACKUP)
-	log.Infof("Start sending backup file to connection ('%s', %s).", ip, port)
+	log.Infof("Start sending backup file (%s) to connection ('%s', %s).", fileSize, ip, port)
 
 	var currentByte int64 = 0
 	for {

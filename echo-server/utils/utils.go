@@ -4,6 +4,8 @@ import (
 	"strings"
 	"path/filepath"
 	"github.com/spf13/viper"
+
+	"github.com/LaCumbancha/backup-server/echo-server/common"
 )
 
 // Get configuration file's path structure. 
@@ -34,8 +36,13 @@ func ParseAddress(address string) (string, string) {
 	return ip, port
 }
 
-// Fill string with '\0' for packange sending
+// Fill string with '|' for packange sending
 func FillString(message string, size int) string {
 	missingPositions := size - len(message)
-	return message + strings.Repeat("|", missingPositions)
+	return message + strings.Repeat(PADDING_CHARACTER, missingPositions)
+}
+
+// Remove padding '|'
+func UnfillString(message []byte) string {
+	return strings.TrimSuffix(string(message), PADDING_CHARACTER)
 }
