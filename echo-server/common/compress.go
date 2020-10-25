@@ -50,17 +50,17 @@ func IterativeCompression(dirPath string, tarWriter *tar.Writer) {
 	  fullPath := dirPath + "/" + fileInfo.Name()
 
 	  if fileInfo.IsDir() {
-	  	log.Debug("Accessing new directory for compression in %s", fullPath)
+	  	log.Debugf("Accessing new directory for compression in %s", fullPath)
 	    IterativeCompression(fullPath, tarWriter)
 	  } else {
-	  	log.Debug("Adding file %s to TarGz", fullPath)
+	  	log.Debugf("Adding file %s to TarGz", fullPath)
 	    TarAppender(fullPath, tarWriter, fileInfo)
 	  }
 	}
 }
 
-func Compress(outputName string, inPath string) {
-  fileWriter, err := os.Create(outputName)
+func GenerateBackupFile(outputName string, inPath string) {
+	fileWriter, err := os.Create(outputName)
 	if err != nil {
 	    log.Fatal("Error creating fileWriter for compressor.", err)
 	}

@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/LaCumbancha/backup-server/echo-server/backup"
 	"github.com/LaCumbancha/backup-server/echo-server/utils"
@@ -45,6 +45,7 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 }
 
 func main() {
+	log.SetLevel(log.DebugLevel)
 	configEnv, configFile, err := InitConfig()
 
 	if err != nil {

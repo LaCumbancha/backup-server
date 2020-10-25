@@ -33,3 +33,9 @@ func ParseAddress(address string) (string, string) {
 
 	return ip, port
 }
+
+// Fill string with '\0' for packange sending
+func FillString(message string, size int) string {
+	missingPositions := size - len(message)
+	return message + strings.Repeat("|", missingPositions)
+}

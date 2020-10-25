@@ -1,12 +1,16 @@
 package common
 
 import (
+	"io"
 	"os"
+	"fmt"
+	"crypto/sha256"
 
 	log "github.com/sirupsen/logrus"
 )
 
-const INFO_FILE = "/Data.info"
+const INFO_FILE = "Data.info"
+const BACKUP_FILE = "Backup.tar.gz"
 
 type StorageConfig struct {
 	Port 			string
@@ -23,7 +27,7 @@ func (storageManager *StorageManager) BuildStorage() {
 		log.Fatalf("Error creating StorageManager directory.", err)
 	}
 
-	file, err := os.Create(storageManager.Path + INFO_FILE)
+	file, err := os.Create(storageManager.Path + "/" + INFO_FILE)
 	if err != nil {
 		log.Fatalf("Error creating StorageManager file.", err)
 	}
@@ -32,7 +36,7 @@ func (storageManager *StorageManager) BuildStorage() {
 }
 
 func (storageManager *StorageManager) UpdateStorage(line string) {
-	file, err := os.OpenFile(storageManager.Path + INFO_FILE, os.O_WRONLY|os.O_APPEND, 0644)
+	file, err := os.OpenFile(storageManager.Path + "/" + INFO_FILE, os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
         log.Fatalf("Error opening StorageManager file.", err)
     }
@@ -47,6 +51,18 @@ func (storageManager *StorageManager) UpdateStorage(line string) {
     log.Infof("New message stored in server: %s", line)
 }
 
-func (storageManager *StorageManager) GenerateBackup() {
-	Compress("Backup.tar.gz", storageManager.Path)
+func (storageManager *StorageManager) GenerateBackup() (string, *os.File) {
+	GenerateBackupFile(BACKUP_FILE, storageManager.Path)
+
+	file, err := os.Open(BACKUP_FILE)
+	if err != nil {
+        log.Fatalf("Error opening compressed backup file.", err)
+    }
+
+    hasher := sha256.New()
+    if _, err := io.Copy(hasher, file); err != nil {
+        log.Fatalf("Error building hash for compressed backup file.", err)
+    }
+
+    return fmt.Sprintf("%x", hasher.Sum(nil)), file
 }
