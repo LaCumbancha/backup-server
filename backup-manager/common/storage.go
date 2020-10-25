@@ -1,11 +1,14 @@
 package common
 
 import (
+	"io"
 	"os"
 	"fmt"
 	"time"
 	"sync"
+	"sort"
 	"io/ioutil"
+	"crypto/md5"
 	"crypto/sha256"
 	"gopkg.in/yaml.v2"
 
@@ -178,6 +181,50 @@ func (bkpStorage *BackupStorage) RemoveBackupClient(backupUnregister BackupRegis
 
 	log.Infof("Removed backup client with ID: %s (IP %s; Port %s; Path \"%s\"; Frequency %s).", backupUnregisterId, backupUnregister.Ip, backupUnregister.Port, backupUnregister.Path, backupUnregister.Freq)
 	return "New backup client request successfully removed.\n"
+}
+
+func (bkpStorage *BackupStorage) GenerateEtag(backupId string) string {
+	files, err := ioutil.ReadDir(bkpStorage.path + backupId)
+	if err != nil {
+		log.Errorf("Error reading backup directory for client %s", backupId, err)
+		bkpStorage.checkForDirectory(backupId)
+		return ""
+	}
+
+	if len(files) > 0 {
+		// Sorting backup files to use last one.
+		sort.Slice(files, func(idx1, idx2 int) bool { return files[idx1].Name() < files[idx2].Name() })
+		lastBackupName := files[len(files) - 1].Name()
+
+		lastBackupFile, err := os.Open(bkpStorage.path + backupId + "/" + lastBackupName)
+		if err != nil {
+    	    log.Fatalf("Error opening backup file %s.", lastBackupName, err)
+    	}
+    	defer lastBackupFile.Close()
+
+		hasher := md5.New()
+    	if _, err := io.Copy(hasher, lastBackupFile); err != nil {
+    	    log.Errorf("Error building hash for compressed backup file.", err)
+    	    return ""
+    	}
+    	
+    	return fmt.Sprintf("%x", hasher.Sum(nil))
+
+	} else {
+		log.Debugf("No backup file to calculate Etag, defaulting with empty string.")
+		return ""
+	}
+}
+
+func (bkpStorage *BackupStorage) checkForDirectory(backupId string) {
+	if _, err := os.Stat(bkpStorage.path + backupId); os.IsNotExist(err) {
+		log.Warnf("Backup directory for id %s was missing.", backupId)
+
+		err = os.Mkdir(bkpStorage.path + backupId, os.ModePerm)
+		if err != nil {
+			log.Errorf("Error creating Backup directory for id %s.", backupId, err)
+		}
+	}
 }
 
 func AsSha256(backupRegister BackupRegister) string {

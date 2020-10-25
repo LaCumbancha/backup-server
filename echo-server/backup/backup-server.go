@@ -15,6 +15,9 @@ import (
 	"github.com/LaCumbancha/backup-server/echo-server/utils"
 )
 
+const BUFFER_BACKUP_FILE_SIZE = 10
+const BUFFER_BACKUP = 1024
+
 type BackupServer struct {
 	port 		string
 	storage 	*common.StorageManager
@@ -66,7 +69,8 @@ func (backupServer *BackupServer) handleBackup(client net.Conn, receivedEtag str
 
 	if currentEtag == receivedEtag {
 		log.Infof("There's no difference beetween current version and last sent. Backup skipped.")
-		client.Write([]byte("UNMODIFIED"))
+		emptySize := utils.FillString(strconv.FormatInt(0, 10), 10)
+		client.Write([]byte(emptySize))
 	} else {
 		log.Infof("Sending new backup with E-Tag: %s", currentEtag)
 		backupServer.sendBackupFile(client, backupFile)
@@ -81,40 +85,39 @@ func (backupServer *BackupServer) sendBackupFile(client net.Conn, backupFile *os
 	}
 
 	ip, port := utils.ParseAddress(client.RemoteAddr().String())
-	fileSize := utils.FillString(strconv.FormatInt(fileInfo.Size(), 10), 10)
-	fileName := utils.FillString(fileInfo.Name(), 64)
+	fileSize := utils.FillString(strconv.FormatInt(fileInfo.Size(), 10), BUFFER_BACKUP_FILE_SIZE)
 	
 	client.Write([]byte(fileSize))
 	log.Infof("Sending backup file size to connection ('%s', %s).", ip, port)
 	
-	client.Write([]byte(fileName))
-	log.Infof("Sending backup file name to connection ('%s', %s).", ip, port)
-	
-	sendBuffer := make([]byte, common.BUFFER_SIZE)
+	sendBuffer := make([]byte, BUFFER_BACKUP)
 	log.Infof("Start sending backup file to connection ('%s', %s).", ip, port)
 
 	var currentByte int64 = 0
 	for {
-		idx := int(math.Ceil(float64(currentByte) / float64(common.BUFFER_SIZE))) + 1
-		log.Debugf("Start sending package #%d.", idx)
+		idx := int(math.Ceil(float64(currentByte) / float64(BUFFER_BACKUP))) + 1
+		log.Debugf("Start sending chunk #%d.", idx)
 
 		sentBytes, err := backupFile.ReadAt(sendBuffer, currentByte)
 
 		if sentBytes != 0 {
-			client.Write(sendBuffer[:sentBytes])
-			log.Debugf("Finish sending package #%d, with %d bytes.", idx, sentBytes)
+			_, err = client.Write(sendBuffer[:sentBytes])
+			if err != nil {
+				log.Errorf("Error sending chunk #%d, with %d bytes.", idx, sentBytes)
+			}
+			log.Debugf("Finish sending chunk #%d, with %d bytes.", idx, sentBytes)
 		}
 
 		if err != nil {
 			if err == io.EOF {
-				log.Debugf("Sending EOF in package #%d.", idx)
+				log.Debugf("Sending EOF in chunk #%d.", idx)
 				break
 			} else {
 				log.Errorf("Error sending backup file to connection ('%s', %s).", ip, port)
 			}
 		}
 
-		currentByte += common.BUFFER_SIZE
+		currentByte += BUFFER_BACKUP
 	}
 
 	log.Infof("Backup file sent to connection ('%s', %s).", ip, port)

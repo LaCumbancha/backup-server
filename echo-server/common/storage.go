@@ -4,7 +4,7 @@ import (
 	"io"
 	"os"
 	"fmt"
-	"crypto/sha256"
+	"crypto/md5"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -59,10 +59,15 @@ func (storageManager *StorageManager) GenerateBackup() (string, *os.File) {
         log.Fatalf("Error opening compressed backup file.", err)
     }
 
-    hasher := sha256.New()
+    return storageManager.generateEtag(file), file
+}
+
+func (storageManager *StorageManager) generateEtag(file *os.File) (string) {
+	hasher := md5.New()
     if _, err := io.Copy(hasher, file); err != nil {
-        log.Fatalf("Error building hash for compressed backup file.", err)
+        log.Errorf("Error building hash for compressed backup file.", err)
+        return "."
     }
 
-    return fmt.Sprintf("%x", hasher.Sum(nil)), file
+    return fmt.Sprintf("%x", hasher.Sum(nil))
 }

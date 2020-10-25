@@ -9,8 +9,7 @@ services:
     container_name: bkp_manager1
     entrypoint: /manager
     environment:
-    - BKPMNGR_IP=server
-    - BKPMNGR_CONFIG_FILE=/config/initial-config.yaml
+    - BKP_CONFIG_FILE=/config/initial-config.yaml
     image: bkp_manager:latest
     networks:
     - testing_net

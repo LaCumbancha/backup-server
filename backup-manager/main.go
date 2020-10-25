@@ -18,11 +18,12 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 
 	// Configure viper to read env variables with the BKPMNGR_ prefix
 	configEnv.AutomaticEnv()
-	configEnv.SetEnvPrefix("bkpmngr")
+	configEnv.SetEnvPrefix("bkp")
 
 	// Add env variables supported
-	configEnv.BindEnv("port")
 	configEnv.BindEnv("storage")
+	configEnv.BindEnv("manager", "port")
+	configEnv.BindEnv("scheduler", "port")
 	configEnv.BindEnv("config", "file")
 
 	// Read config file if it's present
@@ -51,16 +52,22 @@ func main() {
 		log.Fatalf("%s", err)
 	}
 
-	port := utils.GetConfigValue(configEnv, configFile, "port")
-	
-	if port == "" {
-		log.Fatalf("Port variable missing")
-	}
-
 	storagePath := utils.GetConfigValue(configEnv, configFile, "storage")
 	
 	if storagePath == "" {
 		log.Fatalf("Storage variable missing")
+	}
+
+	managerPort := utils.GetConfigValue(configEnv, configFile, "manager_port")
+	
+	if managerPort == "" {
+		log.Fatalf("Port variable missing")
+	}
+
+	schedulerPort := utils.GetConfigValue(configEnv, configFile, "scheduler_port")
+	
+	if schedulerPort == "" {
+		log.Fatalf("Port variable missing")
 	}
 
 	backupStorageConfig := common.BackupStorageConfig {
@@ -78,7 +85,7 @@ func main() {
 	go backupScheduler.Run()
 
 	managerConfig := manager.BackupManagerConfig {
-		Port: 			port,
+		Port: 			managerPort,
 		Storage: 		backupStorage,
 	}
 

@@ -1,2 +1,3 @@
-port: 10000
 storage: ./data/backups
+manager_port: 10000
+scheduler_port: 10001
