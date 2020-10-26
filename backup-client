@@ -5,6 +5,10 @@ import json
 import socket
 import argparse
 
+BUFFER_BACKUP_LOG = 1024
+BUFFER_BACKUP_LOG_SIZE = 10
+PADDING_CHARACTER = '|'
+
 REGISTER = 'REGISTER'
 UNREGISTER = 'UNREGISTER'
 QUERY = 'QUERY'
@@ -53,6 +57,7 @@ def registerMenu():
 	req.args.port = input('Port: ')
 	req.args.path = input('Path: ')
 	req.args.freq = input('Freq: ')
+	print()
 	connect(req)
 
 def unregisterMenu():
@@ -63,6 +68,7 @@ def unregisterMenu():
 	req.args.ip = input('IP: ')
 	req.args.port = input('Port: ')
 	req.args.path = input('Path: ')
+	print()
 	connect(req)
 
 def queryMenu():
@@ -73,7 +79,8 @@ def queryMenu():
 	req.args.ip = input('IP: ')
 	req.args.port = input('Port: ')
 	req.args.path = input('Path: ')
-	connect(req)
+	print()
+	connect_query(req)
 
 def connect(req):
 	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -81,7 +88,46 @@ def connect(req):
 		sock.sendall(str.encode(req.toJSON().replace('\n', '') + '\n'))
 		data = sock.recv(1024)
 
-		print('Response: ', repr(data))
+		print('Response:')
+		print(repr(data))
+
+def connect_query(req):
+	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+		sock.connect((args.ip, int(args.port)))
+		sock.sendall(str.encode(req.toJSON().replace('\n', '') + '\n'))
+
+		# Receiving result size
+		data = sock.recv(BUFFER_BACKUP_LOG_SIZE)
+		size = int(trim_padding(data.decode('utf-8')))
+
+		if size > 0:
+
+			data = b''
+			received = 0
+			while received < size:
+
+				if (size - received) < BUFFER_BACKUP_LOG:
+					data += sock.recv(size - received)
+				else:
+					data += sock.recv(BUFFER_BACKUP_LOG)
+
+				received += BUFFER_BACKUP_LOG
+
+			print('Response:')
+			print(data.decode('utf-8'))
+
+		else:
+			print('There was some errors retrieving the requested information.')
+
+def trim_padding(message):
+	reversed = message[::-1]
+
+	for idx in range(len(reversed)):
+		if reversed[idx] != PADDING_CHARACTER:
+			return reversed[idx::][::-1]
+
+	return ''
+
 
 parser = argparse.ArgumentParser()
 

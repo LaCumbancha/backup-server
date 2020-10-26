@@ -184,6 +184,14 @@ func (bkpScheduler *BackupScheduler) handleBackupConnection(backupRequest Backup
 			receivedBytes += BUFFER_BACKUP
 		}
 
+		fileInfo, err := newFile.Stat()
+		if err != nil {
+			log.Errorf("Error getting backup stats for ID %s.", backupRequest.Id, err)
+			bkpScheduler.storage.UpdateBackupLog(backupRequest.Id, -1)
+		} else {
+			bkpScheduler.storage.UpdateBackupLog(backupRequest.Id, fileInfo.Size())
+		}
+		
 		log.Infof("Backup file received from connection ('%s', %s).", backupRequest.Ip, backupRequest.Port)
 	}
 	

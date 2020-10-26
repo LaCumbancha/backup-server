@@ -15,6 +15,18 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var sizeUnits = map[int]string{
+  	0: "B",
+  	1: "kB",
+  	2: "MB",
+  	3: "GB",
+  	4: "TB",
+  	5: "PB",
+  	6: "EB",
+  	7: "ZB",
+  	8: "YB",
+}
+
 const MAX_BACKUPS = 10
 
 type BackupStorageConfig struct {
@@ -168,6 +180,12 @@ func (bkpStorage *BackupStorage) initializeBackupRegister(backupId string) bool 
 		return false
 	}
 
+	backupLog, err := os.OpenFile(bkpStorage.path + backupId + "/Log", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+	if err != nil {
+		log.Errorf("Error opening Backup Log file for ID %s.", backupId, err)
+	}
+	defer backupLog.Close()
+
 	bkpStorage.updateBackupRegisterHistoric(backupId, "Backup client registered")
     return true
 }
@@ -280,4 +298,48 @@ func (bkpStorage *BackupStorage) AddNewBackup(backupId string) *os.File {
 	}
 
 	return newFile
+}
+
+func (bkpStorage *BackupStorage) UpdateBackupLog(backupId string, fileSize int64) {
+	file, err := os.OpenFile(bkpStorage.path + backupId + "/Log", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+	if err != nil {
+		log.Warnf("Error opening Backup Log file for ID %s.", backupId, err)
+	}
+	defer file.Close()
+
+	if fileSize >= 0 {
+		size, units := bkpStorage.calculateFileSize(float64(fileSize), 0)
+		_, err = file.WriteString(fmt.Sprintf("Registered backup with size %6.1f%s @ %s\n", size, units, time.Now().String()))
+	} else {
+		_, err = file.WriteString(fmt.Sprintf("Registered backup with unknown size (due to an error) @ %s", time.Now().String()))
+	}
+
+    if err != nil {
+        log.Errorf("Error writing Backup Log file for ID %s.", backupId, err)
+    }
+}
+
+func (bkpStorage *BackupStorage) calculateFileSize(size float64, level int) (float64, string) {
+	if level == 8 || size < 1024 {
+		return size, sizeUnits[level]
+	} else {
+		return bkpStorage.calculateFileSize(size/1024, level+1)
+	}
+}
+
+func (bkpStorage *BackupStorage) RetrieveBackupLog(backupRegister BackupRegister) (*os.File, int64){
+	backupId := AsSha256(backupRegister)
+
+	file, err := os.OpenFile(bkpStorage.path + backupId + "/Log", os.O_RDONLY, 0644)
+	if err != nil {
+		log.Errorf("Error opening Backup Log file for ID %s.", backupId, err)
+	}
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		log.Errorf("Error getting backup log stats for ID %s.", backupId, err)
+		return file, -1
+	}
+
+	return file, fileInfo.Size()
 }

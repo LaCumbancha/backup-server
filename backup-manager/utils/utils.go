@@ -60,17 +60,15 @@ func FillString(message string, size int) string {
 
 // Remove padding '|'
 func UnfillString(message []byte) string {
-	tmpStr := reversed(string(message))
+	reversedMessage := reversed(string(message))
 
-	trimmed := ""
-	for _, char := range tmpStr {
-		str := string(char)
-		if str != common.PADDING_CHARACTER {
-			trimmed += str
+	for idx, char := range reversedMessage {
+		if string(char) != common.PADDING_CHARACTER {
+			return reversed(reversedMessage[idx:])
 		}
 	}
 
-	return reversed(trimmed)
+	return ""
 }
 
 func reversed(str string) string {

@@ -101,13 +101,13 @@ func (backupServer *BackupServer) sendBackupFile(client net.Conn, backupFile *os
 
 	ip, port := utils.ParseAddress(client.RemoteAddr().String())
 	fileSize := strconv.FormatInt(fileInfo.Size(), 10)
-	fileSizeMessage := utils.FillString(strconv.FormatInt(fileInfo.Size(), 10), BUFFER_BACKUP_FILE_SIZE)
+	fileSizeMessage := utils.FillString(fileSize, BUFFER_BACKUP_FILE_SIZE)
 	
 	client.Write([]byte(fileSizeMessage))
 	log.Infof("Sending backup file size to connection ('%s', %s).", ip, port)
 	
 	sendBuffer := make([]byte, BUFFER_BACKUP)
-	log.Infof("Start sending backup file (%s) to connection ('%s', %s).", fileSize, ip, port)
+	log.Infof("Start sending backup file (size %s) to connection ('%s', %s).", fileSize, ip, port)
 
 	var currentByte int64 = 0
 	for {
@@ -129,16 +129,15 @@ func (backupServer *BackupServer) sendBackupFile(client net.Conn, backupFile *os
 				log.Debugf("Sending EOF in chunk #%d.", idx)
 				break
 			} else {
-				log.Errorf("Error sending backup file to connection ('%s', %s).", ip, port)
+				log.Errorf("Error sending backup file to connection ('%s', %s).", ip, port, err)
 			}
 		}
 
 		currentByte += BUFFER_BACKUP
 	}
 
+	backupFile.Close()
 	log.Infof("Backup file sent to connection ('%s', %s).", ip, port)
-
-	defer backupFile.Close()
 }
 
 func (backupServer *BackupServer) Run() {
