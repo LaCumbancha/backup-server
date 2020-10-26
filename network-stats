@@ -1,0 +1,29 @@
+#!/bin/bash
+
+BACKUP_MANAGERS=$1
+ECHO_SERVERS=$2
+
+echo ""
+echo ""
+echo "Network: tp1_testing_net"
+echo ""
+
+for idx in $(seq 1 $BACKUP_MANAGERS); do
+	IP=$(docker network inspect tp1_testing_net | \
+		python3 -c "import sys, json; print(list(filter(lambda x: x['Name'] == 'bkp_manager${idx}', json.load(sys.stdin)[0]['Containers'].values()))[0]['IPv4Address'].split('/')[0])")
+
+	PORT=$(cat ./backup-manager/config/initial-config.yaml | grep manager_port | \
+		python3 -c "import sys; print(sys.stdin.read().split(':')[1].strip())")
+
+	echo "BackupMananger${idx} @ \tIP ${IP} and Port ${PORT}"
+done
+
+for idx in $(seq 1 $ECHO_SERVERS); do
+	IP=$(docker network inspect tp1_testing_net | \
+		python3 -c "import sys, json; print(list(filter(lambda x: x['Name'] == 'echo_server${idx}', json.load(sys.stdin)[0]['Containers'].values()))[0]['IPv4Address'].split('/')[0])")
+
+	PORT=$(cat ./echo-server/config/initial-config.yaml | grep echo_port | \
+		python3 -c "import sys; print(sys.stdin.read().split(':')[1].strip())")
+
+	echo "EchoServer${idx}     @ IP ${IP} and Port ${PORT}"
+done

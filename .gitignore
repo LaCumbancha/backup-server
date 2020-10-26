@@ -16,3 +16,6 @@
 
 # Backups
 backup-manager/data/
+
+# Docker-Compose YAML
+docker-compose-dev.yaml

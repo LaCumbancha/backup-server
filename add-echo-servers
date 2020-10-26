@@ -1,1 +1,1 @@
-docker container ls | awk '{print $NF}' | grep echo_server | sed -e 's/^echo_server\(.$\)/\1/' | sort | tail -n1 | { read line; echo "$((line + 1))"; }
+docker container ls | awk '{print $NF}' | grep echo_server | sed -e 's/^echo_server\([0-9]*$\)/\1/' | head -n1 | { read line; echo "$((line + 1))"; }

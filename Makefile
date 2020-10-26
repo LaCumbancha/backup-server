@@ -63,4 +63,6 @@ docker-add-echosv:
 	done
 
 	$(PYTHON) system-builder --bkp-managers=$(BKP_MANAGERS) --echo-servers=$(END)
+
+	./network-stats 1 $(END)
 .PHONY: docker-add-echosv
