@@ -5,8 +5,6 @@ import (
 	"io"
 	"net"
 	"math"
-	"bufio"
-	"strings"
 	"strconv"
 
 	log "github.com/sirupsen/logrus"
@@ -55,11 +53,11 @@ func (backupServer *BackupServer) listenBackups(listener net.Listener) {
 			log.Infof("Backup connection ('%s', %s) closed.", ip, port)
 			break
 		} else if err != nil {
-			log.Errorf("Error receiving etag from backup scheduler.", error)
+			log.Errorf("Error receiving etag from backup scheduler.", err)
 			return
 		}
 
-		receivedEtag := utils.UnfillString(line)
+		receivedEtag := utils.UnfillString(etagBuffer)
 		log.Infof("Backup request received from connection ('%s', %s). E-Tag: %s", ip, port, receivedEtag)
 		backupServer.handleBackup(client, receivedEtag)
 	}

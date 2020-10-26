@@ -39,10 +39,28 @@ func ParseAddress(address string) (string, string) {
 // Fill string with '|' for packange sending
 func FillString(message string, size int) string {
 	missingPositions := size - len(message)
-	return message + strings.Repeat(PADDING_CHARACTER, missingPositions)
+	return message + strings.Repeat(common.PADDING_CHARACTER, missingPositions)
 }
 
 // Remove padding '|'
 func UnfillString(message []byte) string {
-	return strings.TrimSuffix(string(message), PADDING_CHARACTER)
+	tmpStr := reversed(string(message))
+
+	trimmed := ""
+	for _, char := range tmpStr {
+		str := string(char)
+		if str != common.PADDING_CHARACTER {
+			trimmed += str
+		}
+	}
+
+	return reversed(trimmed)
+}
+
+func reversed(str string) string {
+	result := ""
+	for _, char := range str { 
+        result = string(char) + result 
+    }
+    return result
 }

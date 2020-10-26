@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math"
 	"time"
-	"strings"
 	"strconv"
 
 	log "github.com/sirupsen/logrus"
@@ -121,7 +120,7 @@ func (bkpScheduler *BackupScheduler) handleBackupConnection(backupRequest Backup
 	
 	conn.Write([]byte(etagMessage))
 	log.Infof("Sending etag '%s' to backup connection ('%s', %s).", etag, backupRequest.Ip, backupRequest.Port)
-	log.Debugf("Sending message '%b' to backup connection ('%s', %s).", etagMessage, backupRequest.Ip, backupRequest.Port)
+	log.Debugf("Sending message '%s' to backup connection ('%s', %s).", string(etagMessage), backupRequest.Ip, backupRequest.Port)
 
 	// Receiving backup
 	bufferFileSize := make([]byte, BUFFER_BACKUP_SIZE)
@@ -130,6 +129,7 @@ func (bkpScheduler *BackupScheduler) handleBackupConnection(backupRequest Backup
 		log.Errorf("Error receiving backup size from client %s.", backupRequest.Id)
 	}
 
+	log.Debugf("Received backup file size message (%s) from client %s.", string(bufferFileSize), backupRequest.Id)
 	fileSize, err := strconv.ParseInt(utils.UnfillString(bufferFileSize), 10, 64)
 	if err != nil {
 		log.Errorf("Error parsing backup file size from client %s.", backupRequest.Id)
@@ -159,10 +159,15 @@ func (bkpScheduler *BackupScheduler) handleBackupConnection(backupRequest Backup
 				io.CopyN(newFile, conn, (fileSize - receivedBytes))
 
 				_, err = conn.Read(make([]byte, (receivedBytes+BUFFER_BACKUP)-fileSize))
-				if err != nil {
-					log.Errorf("Error receiving chunk %d from client %s.", idx, backupRequest.Id)
+				if err == io.EOF {
+					log.Debugf("Finish receiving chunk #%d.", idx)
+					io.CopyN(newFile, conn, BUFFER_BACKUP)
+					log.Infof("Backup connection ('%s', %s) closed.", backupRequest.Ip, backupRequest.Port)
+					break
+				} else if err != nil {
+					log.Errorf("Error receiving chunk %d from client %s.", idx, backupRequest.Id, err)
+					return
 				}
-				break
 			}
 
 			io.CopyN(newFile, conn, BUFFER_BACKUP)
