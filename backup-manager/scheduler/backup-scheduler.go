@@ -114,6 +114,7 @@ func (bkpScheduler *BackupScheduler) handleBackupConnection(backupRequest Backup
 	conn, err := net.Dial("tcp", backupRequest.Ip + ":" + backupRequest.Port)
 	if err != nil {
 		log.Errorf("Couldn't stablish connection with client %s", backupRequest.Ip)
+		bkpScheduler.rescheduleBackup(backupRequest)
 		return
 	}
 	defer conn.Close()
@@ -137,12 +138,14 @@ func (bkpScheduler *BackupScheduler) handleBackupConnection(backupRequest Backup
 	_, err = conn.Read(bufferFileSize)
 	if err != nil {
 		log.Errorf("Error receiving backup size from client %s.", backupRequest.Id)
+		bkpScheduler.rescheduleBackup(backupRequest)
 	}
 
 	log.Debugf("Received backup file size message (%s) from client %s.", string(bufferFileSize), backupRequest.Id)
 	fileSize, err := strconv.ParseInt(utils.UnfillString(bufferFileSize), 10, 64)
 	if err != nil {
 		log.Errorf("Error parsing backup file size from client %s.", backupRequest.Id)
+		bkpScheduler.rescheduleBackup(backupRequest)
 		return
 	}
 	log.Infof("Received backup file (%d) size from connection ('%s', %s).", fileSize, backupRequest.Ip, backupRequest.Port)
@@ -175,6 +178,7 @@ func (bkpScheduler *BackupScheduler) handleBackupConnection(backupRequest Backup
 					break
 				} else if err != nil {
 					log.Errorf("Error receiving chunk %d from client %s.", idx, backupRequest.Id, err)
+					bkpScheduler.rescheduleBackup(backupRequest)
 					return
 				}
 			}
@@ -195,6 +199,16 @@ func (bkpScheduler *BackupScheduler) handleBackupConnection(backupRequest Backup
 		log.Infof("Backup file received from connection ('%s', %s).", backupRequest.Ip, backupRequest.Port)
 	}
 	
+}
+
+func (bkpScheduler *BackupScheduler) rescheduleBackup(backupRequest BackupRequest) {
+	log.Infof("Reseting backup for client %s for next iteration.", backupRequest.Id)
+	backups := bkpScheduler.storage.GetBackupClients()
+
+	var updatedBackups map[string]common.BackupRegister = make(map[string]common.BackupRegister)
+	updatedBackups[backupRequest.Id] = bkpScheduler.updateBackupInformation(backups[backupRequest.Id], time.Now())
+
+	bkpScheduler.storage.UpdateBackupClients(updatedBackups)
 }
 
 func (bkpScheduler *BackupScheduler) Run() {
