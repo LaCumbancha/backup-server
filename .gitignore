@@ -15,4 +15,4 @@
 # vendor/
 
 # Backups
-backup-manager/data/*
+backup-manager/data/

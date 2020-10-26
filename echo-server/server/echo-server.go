@@ -81,7 +81,7 @@ func (echoServer *EchoServer) Run() {
 	// Create server
 	listener, err := net.Listen("tcp", ":" + echoServer.port)
 	if listener == nil || err != nil {
-		log.Fatalf("[SERVER] Error creating TCP server socket at port %s.", echoServer.port)
+		log.Fatalf("Error creating TCP server socket at port %s.", echoServer.port)
 	}
 
 	// Start processing connections

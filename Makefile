@@ -49,3 +49,11 @@ docker-manager-shell:
 docker-echosv-shell:
 	docker container exec -it echo_server$(ECHOSV) /bin/sh
 .PHONY: docker-echosv-shell
+
+docker-add-echosv:
+	docker run -d --rm \
+	--name echo_server$(NEW_ECHOSV) \
+	--network=$(PROJECT_NAME)_testing_net \
+	--mount type=bind,source=$(PWD)/echo-server/config,target=/config "echo_server:latest" \
+	-c "export APP_CONFIG_FILE=/config/initial-config.yaml; ./echo-server"
+.PHONY: docker-add-echosv
