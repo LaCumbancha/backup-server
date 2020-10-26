@@ -9,6 +9,7 @@ ECHOSV := 1
 MANAGER := 1
 BKP_MANAGERS := 1
 ECHO_SERVERS := 2
+NEW_ECHOSVS := 1
 
 default: build
 
@@ -51,9 +52,15 @@ docker-echosv-shell:
 .PHONY: docker-echosv-shell
 
 docker-add-echosv:
-	docker run -d --rm \
-	--name echo_server$(NEW_ECHOSV) \
-	--network=$(PROJECT_NAME)_testing_net \
-	--mount type=bind,source=$(PWD)/echo-server/config,target=/config "echo_server:latest" \
-	-c "export APP_CONFIG_FILE=/config/initial-config.yaml; ./echo-server"
+	$(eval START := $(shell "./add-echo-servers"))
+	$(eval END := $(shell echo $$(($(NEW_ECHOSVS) + $(START)))))
+	for idx in $(shell seq $(START) $(END)); do \
+		docker run -d --rm \
+		--name echo_server$$idx \
+		--network=$(PROJECT_NAME)_testing_net \
+		--mount type=bind,source=$(PWD)/echo-server/config,target=/config "echo_server:latest" \
+		-c "export APP_CONFIG_FILE=/config/initial-config.yaml; ./echo-server"; \
+	done
+
+	$(PYTHON) system-builder --bkp-managers=$(BKP_MANAGERS) --echo-servers=$(END)
 .PHONY: docker-add-echosv
