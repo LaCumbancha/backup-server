@@ -72,7 +72,7 @@ func (echoServer *EchoServer) handleConnections(client net.Conn) {
 		strLine := string(line)
 		log.Infof("Message received from connection ('%s', %s). Msg: %s", ip, port, strLine)
 
-		echoServer.storage.UpdateStorage(strLine)
+		echoServer.storage.UpdateStorage(strLine, ip, port)
 		client.Write(line)
 	}
 }

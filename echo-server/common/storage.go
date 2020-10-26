@@ -9,6 +9,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const LOG_DIR = "/logs/"
+const LOG_FILE = "Log.info"
 const INFO_FILE = "Data.info"
 const BACKUP_FILE = "Backup.tar.gz"
 
@@ -22,7 +24,19 @@ type StorageManager struct {
 }
 
 func (storageManager *StorageManager) BuildStorage() {
-	err := os.MkdirAll(storageManager.Path, os.ModePerm)
+	err := os.MkdirAll(LOG_DIR, os.ModePerm)
+	if err != nil {
+		log.Fatalf("Error creating ConnectionLogs directory.", err)
+	}
+
+	connectionFile, err := os.Create(LOG_DIR + LOG_FILE)
+	if err != nil {
+		log.Fatalf("Error creating ConnectionLogs file.", err)
+	}
+
+	connectionFile.Close()
+
+	err = os.MkdirAll(storageManager.Path, os.ModePerm)
 	if err != nil {
 		log.Fatalf("Error creating StorageManager directory.", err)
 	}
@@ -35,7 +49,7 @@ func (storageManager *StorageManager) BuildStorage() {
 	file.Close()
 }
 
-func (storageManager *StorageManager) UpdateStorage(line string) {
+func (storageManager *StorageManager) UpdateStorage(line, ip, port string) {
 	file, err := os.OpenFile(storageManager.Path + "/" + INFO_FILE, os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
         log.Fatalf("Error opening StorageManager file.", err)
@@ -49,6 +63,20 @@ func (storageManager *StorageManager) UpdateStorage(line string) {
     }
 
     log.Infof("New message stored in server: %s", line)
+
+    connectionFile, err := os.OpenFile(LOG_DIR + LOG_FILE, os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+        log.Fatalf("Error opening ConnectionLog file.", err)
+    }
+
+    defer connectionFile.Close()
+ 
+    _, err = connectionFile.WriteString(fmt.Sprintf("Connection (%s, %s)\n", ip, port))
+    if err != nil {
+        log.Fatalf("Error writing ConnectionLog file.", err)
+    }
+
+    log.Infof("New connection stored in log: (%s, %s)", ip, port)
 }
 
 func (storageManager *StorageManager) GenerateBackup() (string, *os.File) {
