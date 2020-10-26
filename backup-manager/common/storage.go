@@ -158,7 +158,7 @@ func (bkpStorage *BackupStorage) AddBackupClient(backupRegister BackupRegister) 
 	bkpStorage.initializeBackupRegister(backupRegisterId)
 
 	log.Infof("New backup client added for ID %s with: IP %s; Port %s; Path \"%s\"; Frequency %s. Registered with ID: %s.", backupRegisterId, backupRegister.Ip, backupRegister.Port, backupRegister.Path, backupRegister.Freq, backupRegisterId)
-	return fmt.Sprintf("New backup client request successfully added with ID %s.", backupRegisterId)
+	return fmt.Sprintf("New backup client successfully added with ID %s.", backupRegisterId)
 }
 
 func (bkpStorage *BackupStorage) initializeBackupRegister(backupId string) bool {
@@ -173,7 +173,7 @@ func (bkpStorage *BackupStorage) initializeBackupRegister(backupId string) bool 
 }
 
 func (bkpStorage *BackupStorage) updateBackupRegisterHistoric(backupId, message string) {
-	file, err := os.OpenFile(bkpStorage.path + backupId + "/Historic", os.O_WRONLY|os.O_APPEND|os.O_CREATE, os.ModePerm)
+	file, err := os.OpenFile(bkpStorage.path + backupId + "/Historic", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 	if err != nil {
 		log.Errorf("Error opening Backup Historic file for ID %s.", backupId, err)
 	}
@@ -203,7 +203,7 @@ func (bkpStorage *BackupStorage) RemoveBackupClient(backupUnregister BackupRegis
 
 	bkpStorage.updateBackupRegisterHistoric(backupUnregisterId, "Backup client unregistered")
 	log.Infof("Removed backup client with ID: %s (IP %s; Port %s; Path \"%s\"; Frequency %s).", backupUnregisterId, backupUnregister.Ip, backupUnregister.Port, backupUnregister.Path, backupUnregister.Freq)
-	return "New backup client request successfully removed.\n"
+	return "Backup client successfully removed.\n"
 }
 
 func (bkpStorage *BackupStorage) GenerateEtag(backupId string) string {
