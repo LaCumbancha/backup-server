@@ -5,9 +5,13 @@ import (
 	"os"
 	"fmt"
 	"crypto/md5"
+	"archive/tar"
+	"compress/gzip"
 
 	log "github.com/sirupsen/logrus"
 )
+
+const NO_ETAG = "."
 
 const LOG_DIR = "./logs/"
 const LOG_FILE = "Log.info"
@@ -82,7 +86,7 @@ func (storageManager *StorageManager) UpdateStorage(line, ip, port string) {
 func (storageManager *StorageManager) GenerateBackup(path string) (string, *os.File) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 	  	log.Errorf("Requested path to backup doesn't exist.")
-        return "", nil
+        return NO_ETAG, nil
 	}
 
 	GenerateBackupFile(BACKUP_FILE, path)
@@ -90,17 +94,38 @@ func (storageManager *StorageManager) GenerateBackup(path string) (string, *os.F
 	file, err := os.Open(BACKUP_FILE)
 	if err != nil {
         log.Errorf("Error opening compressed backup file.", err)
-        return "", nil
+        return NO_ETAG, nil
     }
 
     return storageManager.generateEtag(file), file
 }
 
-func (storageManager *StorageManager) generateEtag(file *os.File) (string) {
-	hasher := md5.New()
-    if _, err := io.Copy(hasher, file); err != nil {
-        log.Errorf("Error building hash for compressed backup file.", err)
-        return "."
+func (storageManager *StorageManager) generateEtag(backupFile *os.File) string {
+    gzipFile, err := gzip.NewReader(backupFile)
+    if err != nil {
+        log.Errorf("Error reading backup gzip file.", err)
+        return NO_ETAG
+    }
+
+    hasher := md5.New()
+    tarReader := tar.NewReader(gzipFile)
+    for {
+
+    	fileHeader, err := tarReader.Next()
+
+    	if err == io.EOF {
+    		break
+    	} else if err != nil {
+    		log.Errorf("Error retreaving inner tar files for backup.", err)
+    	} else if fileHeader == nil {
+    		continue
+    	}
+
+    	if _, err = io.Copy(hasher, tarReader); err != nil {
+    	    log.Errorf("Error building hash for compressed backup file.", err)
+    	    return NO_ETAG
+    	}
+
     }
 
     return fmt.Sprintf("%x", hasher.Sum(nil))

@@ -110,7 +110,6 @@ func (bkpScheduler *BackupScheduler) handleBackupConnection(backupRequest Backup
 	etag := bkpScheduler.storage.GenerateEtag(backupRequest.Id)
 	log.Infof("Requesting new backup to client %s with etag '%s'", backupRequest.Id, etag)
 
-	
 	conn, err := net.Dial("tcp", backupRequest.Ip + ":" + backupRequest.Port)
 	if err != nil {
 		log.Errorf("Couldn't stablish connection with client %s", backupRequest.Ip)

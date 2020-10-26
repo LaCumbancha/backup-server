@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"os"
 	"net"
 	"bufio"
 	"strings"
@@ -8,9 +9,9 @@ import (
 	"github.com/spf13/viper"
 
 	log "github.com/sirupsen/logrus"
-
-	"github.com/LaCumbancha/backup-server/backup-manager/common"
 )
+
+const PADDING_CHARACTER = "|"
 
 // Get configuration file's path structure. 
 func GetConfigFile(configFileName string) (string, string, string) {
@@ -55,7 +56,7 @@ func SocketWrite(message string, socket net.Conn) {
 // Fill string with '|' for packange sending
 func FillString(message string, size int) string {
 	missingPositions := size - len(message)
-	return message + strings.Repeat(common.PADDING_CHARACTER, missingPositions)
+	return message + strings.Repeat(PADDING_CHARACTER, missingPositions)
 }
 
 // Remove padding '|'
@@ -63,7 +64,7 @@ func UnfillString(message []byte) string {
 	reversedMessage := reversed(string(message))
 
 	for idx, char := range reversedMessage {
-		if string(char) != common.PADDING_CHARACTER {
+		if string(char) != PADDING_CHARACTER {
 			return reversed(reversedMessage[idx:])
 		}
 	}
@@ -77,4 +78,14 @@ func reversed(str string) string {
         result = string(char) + result 
     }
     return result
+}
+
+func Filter(arr []os.FileInfo, cond func(os.FileInfo) bool) []os.FileInfo {
+   result := []os.FileInfo{}
+   for i := range arr {
+     if cond(arr[i]) {
+       result = append(result, arr[i])
+     }
+   }
+   return result
 }

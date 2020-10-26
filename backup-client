@@ -89,7 +89,7 @@ def connect(req):
 		data = sock.recv(1024)
 
 		print('Response:')
-		print(repr(data))
+		print(data.decode('utf-8'))
 
 def connect_query(req):
 	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:

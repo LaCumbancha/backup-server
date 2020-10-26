@@ -9,10 +9,14 @@ import (
 	"sort"
 	"io/ioutil"
 	"crypto/md5"
+	"archive/tar"
 	"crypto/sha256"
+	"compress/gzip"
 	"gopkg.in/yaml.v2"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/LaCumbancha/backup-server/backup-manager/utils"
 )
 
 var sizeUnits = map[int]string{
@@ -232,23 +236,46 @@ func (bkpStorage *BackupStorage) GenerateEtag(backupId string) string {
 		return ""
 	}
 
-	if len(files) > 0 {
+	backupFiles := utils.Filter(files, func(fileInfo os.FileInfo) bool { return len(fileInfo.Name()) >= 7 && fileInfo.Name()[0:6] == "Backup" })
+	if len(backupFiles) > 0 {
 		// Sorting backup files to use last one.
-		sort.Slice(files, func(idx1, idx2 int) bool { return files[idx1].Name() < files[idx2].Name() })
-		lastBackupName := files[len(files) - 1].Name()
+		sort.Slice(backupFiles, func(idx1, idx2 int) bool { return backupFiles[idx1].Name() < backupFiles[idx2].Name() })
+		lastBackupName := backupFiles[len(backupFiles) - 1].Name()
 
 		lastBackupFile, err := os.Open(bkpStorage.path + backupId + "/" + lastBackupName)
 		if err != nil {
-    	    log.Fatalf("Error opening backup file %s.", lastBackupName, err)
+    	    log.Errorf("Error opening backup file %s.", lastBackupName, err)
+    	    return ""
     	}
     	defer lastBackupFile.Close()
 
-		hasher := md5.New()
-    	if _, err := io.Copy(hasher, lastBackupFile); err != nil {
-    	    log.Errorf("Error building hash for compressed backup file.", err)
+    	gzipFile, err := gzip.NewReader(lastBackupFile)
+    	if err != nil {
+    	    log.Errorf("Error reading gzip file %s.", lastBackupName, err)
     	    return ""
     	}
-    	
+
+    	hasher := md5.New()
+    	tarReader := tar.NewReader(gzipFile)
+    	for {
+
+    		fileHeader, err := tarReader.Next()
+
+    		if err == io.EOF {
+    			break
+    		} else if err != nil {
+    			log.Errorf("Error retreaving inner tar files in %s.", lastBackupName, err)
+    		} else if fileHeader == nil {
+    			continue
+    		}
+
+    		if _, err = io.Copy(hasher, tarReader); err != nil {
+    		    log.Errorf("Error building hash for compressed backup file.", err)
+    		    return ""
+    		}
+
+    	}
+
     	return fmt.Sprintf("%x", hasher.Sum(nil))
 
 	} else {

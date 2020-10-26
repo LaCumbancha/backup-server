@@ -81,8 +81,8 @@ func (backupServer *BackupServer) handleBackup(client net.Conn, receivedEtag str
 		errorSize := utils.FillString(strconv.FormatInt(-1, 10), 10)
 		client.Write([]byte(errorSize))
 	}
-
 	if currentEtag == receivedEtag {
+		backupFile.Close()
 		log.Infof("There's no difference beetween current version and last sent. Backup skipped.")
 		emptySize := utils.FillString(strconv.FormatInt(0, 10), 10)
 		client.Write([]byte(emptySize))
