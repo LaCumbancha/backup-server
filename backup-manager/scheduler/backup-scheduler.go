@@ -2,9 +2,7 @@ package scheduler
 
 import (
 	"io"
-	"os"
 	"net"
-	"fmt"
 	"math"
 	"time"
 	"strconv"
@@ -15,10 +13,13 @@ import (
 	"github.com/LaCumbancha/backup-server/backup-manager/common"
 )
 
-const BUFFER_BACKUP_SIZE = 10
-const BUFFER_BACKUP = 1024
-const BUFFER_ETAG = 16
 const BACKUP_TIME_WINDOW = 10
+
+const BUFFER_ETAG = 64
+const BUFFER_BACKUP_PATH = 256
+const BUFFER_BACKUP_FILE_SIZE = 10
+const BUFFER_BACKUP = 1024
+
 
 type BackupSchedulerConfig struct {
 	Port 			string
@@ -29,6 +30,7 @@ type BackupRequest struct {
 	Id 				string
 	Ip 				string
 	Port 			string
+	Path 			string
 }
 
 type BackupScheduler struct {
@@ -75,6 +77,7 @@ func (bkpScheduler *BackupScheduler) checkBackups() chan BackupRequest {
 						Id: 			backupId,
 						Ip:				backupInfo.Ip,
 						Port:			backupInfo.Port,
+						Path:			backupInfo.Path,
 					}
 
 					// Update next backup information
@@ -122,8 +125,15 @@ func (bkpScheduler *BackupScheduler) handleBackupConnection(backupRequest Backup
 	log.Infof("Sending etag '%s' to backup connection ('%s', %s).", etag, backupRequest.Ip, backupRequest.Port)
 	log.Debugf("Sending message '%s' to backup connection ('%s', %s).", string(etagMessage), backupRequest.Ip, backupRequest.Port)
 
+	// Sending path
+	pathMessage := utils.FillString(backupRequest.Path, BUFFER_BACKUP_PATH)
+	
+	conn.Write([]byte(pathMessage))
+	log.Infof("Sending path '%s' to backup connection ('%s', %s).", backupRequest.Path, backupRequest.Ip, backupRequest.Port)
+	log.Debugf("Sending message '%s' to backup connection ('%s', %s).", string(pathMessage), backupRequest.Ip, backupRequest.Port)
+
 	// Receiving backup
-	bufferFileSize := make([]byte, BUFFER_BACKUP_SIZE)
+	bufferFileSize := make([]byte, BUFFER_BACKUP_FILE_SIZE)
 	_, err = conn.Read(bufferFileSize)
 	if err != nil {
 		log.Errorf("Error receiving backup size from client %s.", backupRequest.Id)
@@ -137,15 +147,14 @@ func (bkpScheduler *BackupScheduler) handleBackupConnection(backupRequest Backup
 	}
 	log.Infof("Received backup file (%d) size from connection ('%s', %s).", fileSize, backupRequest.Ip, backupRequest.Port)
 
-	if fileSize == 0 {
+	if fileSize < 0 {
+		log.Infof("There was some errors in the information provided to backup.")
+	} else if fileSize == 0 {
 		log.Infof("Current backup etag matches with current client %s etag, no information is transfered.", backupRequest.Id)
 	} else {
 		log.Infof("Starting new backup transfer. File size: %d.", fileSize)
 
-		newFile, err := os.Create("Backup-" + fmt.Sprintf(time.Now().Format("20060102150405")))
-		if err != nil {
-			log.Errorf("Error creating new backup received from client %s.", backupRequest.Id)
-		}
+		newFile := bkpScheduler.storage.AddNewBackup(backupRequest.Id)
 		defer newFile.Close()
 
 		var receivedBytes int64

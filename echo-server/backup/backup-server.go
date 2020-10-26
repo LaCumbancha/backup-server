@@ -13,9 +13,11 @@ import (
 	"github.com/LaCumbancha/backup-server/echo-server/utils"
 )
 
+const BUFFER_ETAG = 64
+const BUFFER_BACKUP_PATH = 256
 const BUFFER_BACKUP_FILE_SIZE = 10
 const BUFFER_BACKUP = 1024
-const BUFFER_ETAG = 16
+
 
 type BackupServer struct {
 	port 		string
@@ -49,11 +51,8 @@ func (backupServer *BackupServer) listenBackups(listener net.Listener) {
 
 		etagBuffer := make([]byte, BUFFER_ETAG)
 		_, err = client.Read(etagBuffer)
-		if err == io.EOF {
-			log.Infof("Backup connection ('%s', %s) closed.", ip, port)
-			break
-		} else if err != nil {
-			log.Errorf("Error receiving etag from backup scheduler.", err)
+		if err != nil {
+			log.Errorf("Error receiving etag from backup scheduler at ('%s', %s).", ip, port, err)
 			return
 		}
 
@@ -64,8 +63,24 @@ func (backupServer *BackupServer) listenBackups(listener net.Listener) {
 }
 
 func (backupServer *BackupServer) handleBackup(client net.Conn, receivedEtag string) {
-	currentEtag, backupFile := backupServer.storage.GenerateBackup()
+	ip, port := utils.ParseAddress(client.RemoteAddr().String())
+
+	backupPath := make([]byte, BUFFER_BACKUP_PATH)
+	_, err := client.Read(backupPath)
+	if err != nil {
+		log.Errorf("Error receiving path from backup scheduler at ('%s', %s).", ip, port, err)
+		return
+	}
+	receivedPath := utils.UnfillString(backupPath)
+	log.Infof("Path requested to backup from connection (%s, %s): %s.", ip, port, receivedPath)
+
+	currentEtag, backupFile := backupServer.storage.GenerateBackup(receivedPath)
 	defer client.Close()
+
+	if backupFile == nil {
+		errorSize := utils.FillString(strconv.FormatInt(-1, 10), 10)
+		client.Write([]byte(errorSize))
+	}
 
 	if currentEtag == receivedEtag {
 		log.Infof("There's no difference beetween current version and last sent. Backup skipped.")

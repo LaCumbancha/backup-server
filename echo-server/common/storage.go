@@ -9,7 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const LOG_DIR = "/logs/"
+const LOG_DIR = "./logs/"
 const LOG_FILE = "Log.info"
 const INFO_FILE = "Data.info"
 const BACKUP_FILE = "Backup.tar.gz"
@@ -73,18 +73,24 @@ func (storageManager *StorageManager) UpdateStorage(line, ip, port string) {
  
     _, err = connectionFile.WriteString(fmt.Sprintf("Connection (%s, %s)\n", ip, port))
     if err != nil {
-        log.Fatalf("Error writing ConnectionLog file.", err)
+        log.Errorf("Error writing ConnectionLog file.", err)
     }
 
     log.Infof("New connection stored in log: (%s, %s)", ip, port)
 }
 
-func (storageManager *StorageManager) GenerateBackup() (string, *os.File) {
-	GenerateBackupFile(BACKUP_FILE, storageManager.Path)
+func (storageManager *StorageManager) GenerateBackup(path string) (string, *os.File) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+	  	log.Errorf("Requested path to backup doesn't exist.")
+        return "", nil
+	}
+
+	GenerateBackupFile(BACKUP_FILE, path)
 
 	file, err := os.Open(BACKUP_FILE)
 	if err != nil {
-        log.Fatalf("Error opening compressed backup file.", err)
+        log.Errorf("Error opening compressed backup file.", err)
+        return "", nil
     }
 
     return storageManager.generateEtag(file), file
