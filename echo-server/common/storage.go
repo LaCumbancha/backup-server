@@ -13,7 +13,7 @@ import (
 
 const NO_ETAG = "."
 
-const LOG_DIR = "./logs/"
+const LOG_DIR = "./data/logs/"
 const LOG_FILE = "Log.info"
 const INFO_FILE = "Data.info"
 const BACKUP_FILE = "Backup.tar.gz"

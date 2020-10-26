@@ -14,7 +14,8 @@ services:
     networks:
     - testing_net
     volumes:
-    - bkp_manager_vol:/config
+    - bkp_manager_config_vol:/config
+    - bkp_manager_data_vol:/data
   echo_server1:
     container_name: echo_server1
     entrypoint: /echo-server
@@ -37,10 +38,16 @@ services:
     - echo_server_vol:/config
 version: '3'
 volumes:
-  bkp_manager_vol:
+  bkp_manager_config_vol:
     driver: local
     driver_opts:
       device: $PWD/backup-manager/config
+      o: bind
+      type: none
+  bkp_manager_data_vol:
+    driver: local
+    driver_opts:
+      device: $PWD/backup-manager/data
       o: bind
       type: none
   echo_server_vol:
