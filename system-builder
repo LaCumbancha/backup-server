@@ -25,7 +25,7 @@ for idx in range(1, args.bkp_managers+1):
 		'container_name': f'bkp_manager{idx}',
 		'image': 'bkp_manager:latest',
 		'entrypoint': '/manager',
-		'environment': ['BKPMNGR_IP=server', 'BKPMNGR_CONFIG_FILE=/config/initial-config.yaml'],
+		'environment': ['BKP_CONFIG_FILE=/config/initial-config.yaml'],
 		'volumes': ['bkp_manager_vol:/config'],
 		'networks': ['testing_net']
 	}
