@@ -6,7 +6,7 @@ GIT_REMOTE = github.com/LaCumbancha/backup-server
 PROJECT_NAME = tp1
 
 ECHOSV := 1
-MANAGER := 1
+BKPMNGR := 1
 BKP_MANAGERS := 1
 ECHO_SERVERS := 2
 
@@ -45,15 +45,11 @@ docker-compose-logs:
 	docker-compose -f docker-compose-dev.yaml --project-name $(PROJECT_NAME) logs -f
 .PHONY: docker-compose-logs
 
-docker-manager-shell:
-	docker container exec -it bkp_manager$(MANAGER) /bin/sh
-.PHONY: docker-manager-shell
+docker-bkpmngr-shell:
+	docker container exec -it bkp_manager$(BKPMNGR) /bin/sh
+.PHONY: docker-bkpmngr-shell
 
-docker-echosv-shell:
-	docker container exec -it echo_server$(ECHOSV) /bin/sh
-.PHONY: docker-echosv-shell
-
-docker-add-bkpmngr:
+docker-bkpmngr-add:
 	$(eval START := $(shell ./scripts/next-service "bkp_manager"))
 	$(eval END := $(shell echo $$(($(NEW) + $(START) - 1))))
 	for idx in $(shell seq $(START) $(END)); do \
@@ -64,9 +60,18 @@ docker-add-bkpmngr:
 		-c "export APP_CONFIG_FILE=/config/initial-config.yaml; ./bkp_manager"; \
 	done
 	./scripts/network-stats
-.PHONY: docker-add-bkpmngr
+.PHONY: docker-bkpmngr-add
 
-docker-add-echosv:
+docker-bkpmngr-logs:
+	$(eval CONTAINER := $(shell docker ps -aqf "name=^bkp_manager${BKPMNGR}"))
+	docker attach --sig-proxy=false $(CONTAINER)
+.PHONY: docker-bkpmngr-logs
+
+docker-echosv-shell:
+	docker container exec -it echo_server$(ECHOSV) /bin/sh
+.PHONY: docker-echosv-shell
+
+docker-echosv-add:
 	$(eval START := $(shell ./scripts/next-service "echo_server"))
 	$(eval END := $(shell echo $$(($(NEW) + $(START) - 1))))
 	for idx in $(shell seq $(START) $(END)); do \
@@ -77,4 +82,9 @@ docker-add-echosv:
 		-c "export APP_CONFIG_FILE=/config/initial-config.yaml; ./echo-server"; \
 	done
 	./scripts/network-stats
-.PHONY: docker-add-echosv
+.PHONY: docker-echosv-add
+
+docker-echosv-logs:
+	$(eval CONTAINER := $(shell docker ps -aqf "name=^echo_server${ECHOSV}"))
+	docker attach --sig-proxy=false $(CONTAINER)
+.PHONY: docker-echosv-logs
