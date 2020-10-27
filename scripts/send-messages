@@ -1,0 +1,16 @@
+#!/bin/bash
+MESSAGE=$1
+
+ECHO_SERVERS=$(docker network inspect tp1_testing_net | \
+	python3 -c "import sys, json; data = list(map(lambda x: int(x['Name'][11:len(x['Name'])]), list(filter(lambda x: len(x['Name']) > 10 and x['Name'][0:11] == 'echo_server', json.load(sys.stdin)[0]['Containers'].values())))); data.sort(); print(data[0] if len(data) == 1 else ' '.join(list(map(lambda x: str(x), data))))")
+
+for idx in $ECHO_SERVERS; do
+	IP=$(docker network inspect tp1_testing_net | \
+		python3 -c "import sys, json; print(list(filter(lambda x: x['Name'] == 'echo_server${idx}', json.load(sys.stdin)[0]['Containers'].values()))[0]['IPv4Address'].split('/')[0])")
+
+	PORT=$(cat ./echo-server/config/initial-config.yaml | grep echo_port | \
+		python3 -c "import sys; print(sys.stdin.read().split(':')[1].strip())")
+
+	echo -n "Response EchoServer${idx}: "
+	echo "${MESSAGE}" | nc -W1 ${IP} ${PORT}
+done

@@ -25,7 +25,7 @@ build: deps
 .PHONY: build
 
 docker-image:
-	$(PYTHON) system-builder --bkp-managers=$(BKP_MANAGERS) --echo-servers=$(ECHO_SERVERS)
+	$(PYTHON) ./scripts/system-builder --bkp-managers=$(BKP_MANAGERS) --echo-servers=$(ECHO_SERVERS)
 	docker build -f ./backup-manager/Dockerfile -t "bkp_manager:latest" .
 	docker build -f ./echo-server/Dockerfile -t "echo_server:latest" .
 .PHONY: docker-image
@@ -52,8 +52,8 @@ docker-echosv-shell:
 .PHONY: docker-echosv-shell
 
 docker-add-echosv:
-	$(eval START := $(shell "./add-echo-servers"))
-	$(eval END := $(shell echo $$(($(NEW_ECHOSVS) + $(START)))))
+	$(eval START := $(shell ./scripts/next-echo-server))
+	$(eval END := $(shell echo $$(($(NEW_ECHOSVS) + $(START) - 1))))
 	for idx in $(shell seq $(START) $(END)); do \
 		docker run -d --rm \
 		--name echo_server$$idx \
@@ -61,8 +61,5 @@ docker-add-echosv:
 		--mount type=bind,source=$(PWD)/echo-server/config,target=/config "echo_server:latest" \
 		-c "export APP_CONFIG_FILE=/config/initial-config.yaml; ./echo-server"; \
 	done
-
-	$(PYTHON) system-builder --bkp-managers=$(BKP_MANAGERS) --echo-servers=$(END)
-
-	./network-stats 1 $(END)
+	./scripts/network-stats
 .PHONY: docker-add-echosv
