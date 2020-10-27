@@ -9,7 +9,8 @@ ECHOSV := 1
 MANAGER := 1
 BKP_MANAGERS := 1
 ECHO_SERVERS := 2
-NEW_ECHOSVS := 1
+
+NEW := 1
 
 default: build
 
@@ -35,6 +36,7 @@ docker-compose-up: docker-image
 .PHONY: docker-compose-up
 
 docker-compose-down:
+	./scripts/stop-extra-services
 	docker-compose -f docker-compose-dev.yaml --project-name $(PROJECT_NAME) stop -t 1
 	docker-compose -f docker-compose-dev.yaml --project-name $(PROJECT_NAME) down
 .PHONY: docker-compose-down
@@ -51,9 +53,22 @@ docker-echosv-shell:
 	docker container exec -it echo_server$(ECHOSV) /bin/sh
 .PHONY: docker-echosv-shell
 
+docker-add-bkpmngr:
+	$(eval START := $(shell ./scripts/next-service "bkp_manager"))
+	$(eval END := $(shell echo $$(($(NEW) + $(START) - 1))))
+	for idx in $(shell seq $(START) $(END)); do \
+		docker run -d --rm \
+		--name bkp_manager$$idx \
+		--network=$(PROJECT_NAME)_testing_net \
+		--mount type=bind,source=$(PWD)/bkp_manager/config,target=/config "bkp_manager:latest" \
+		-c "export APP_CONFIG_FILE=/config/initial-config.yaml; ./bkp_manager"; \
+	done
+	./scripts/network-stats
+.PHONY: docker-add-bkpmngr
+
 docker-add-echosv:
-	$(eval START := $(shell ./scripts/next-echo-server))
-	$(eval END := $(shell echo $$(($(NEW_ECHOSVS) + $(START) - 1))))
+	$(eval START := $(shell ./scripts/next-service "echo_server"))
+	$(eval END := $(shell echo $$(($(NEW) + $(START) - 1))))
 	for idx in $(shell seq $(START) $(END)); do \
 		docker run -d --rm \
 		--name echo_server$$idx \

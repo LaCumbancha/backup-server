@@ -1,0 +1,23 @@
+#!/bin/bash
+
+stop() {
+	OLD=$(cat docker-compose-dev.yaml | grep "container_name: ${1}" | \
+		python3 -c "import sys, json; print(list(map(lambda x: int(x), filter(lambda x: x != '', map(lambda x: x.replace('container_name: ${1}', '').strip(), sys.stdin.read().split('\n'))))))")
+
+	CURRENT=$(docker network inspect tp1_testing_net | \
+		python3 -c "import sys, json; print(list(map(lambda x: int(x['Name'][11:len(x['Name'])]), list(filter(lambda x: len(x['Name']) > 10 and x['Name'][0:11] == '${1}', json.load(sys.stdin)[0]['Containers'].values())))))")
+
+	DIFF=$(python3 -c "data = [x for x in ${CURRENT} if x not in ${OLD}]; print('' if len(data) == 0 else data[0] if len(data) == 1 else ' '.join(list(map(lambda x: str(x), data))))")
+
+	if [ -n "$DIFF" ]; then 
+		for idx in $DIFF; do
+			echo -n "Stopping container: "
+			docker container stop "${1}${idx}"
+		done
+	else
+		echo "No extra ${1} to stop."
+	fi
+}
+
+stop "echo_server"
+stop "bkp_manager"

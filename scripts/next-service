@@ -1,0 +1,6 @@
+#!/bin/bash
+
+SERVICES=$(docker network inspect tp1_testing_net | \
+	python3 -c "import sys, json; print(max(list(map(lambda x: int(x['Name'][11:len(x['Name'])]), list(filter(lambda x: len(x['Name']) > 10 and x['Name'][0:11] == '${1}', json.load(sys.stdin)[0]['Containers'].values()))))) + 1)")
+
+echo $SERVICES
