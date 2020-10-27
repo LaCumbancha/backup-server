@@ -56,8 +56,8 @@ docker-bkpmngr-add:
 		docker run -d --rm \
 		--name bkp_manager$$idx \
 		--network=$(PROJECT_NAME)_testing_net \
-		--mount type=bind,source=$(PWD)/bkp_manager/config,target=/config "bkp_manager:latest" \
-		-c "export APP_CONFIG_FILE=/config/initial-config.yaml; ./bkp_manager"; \
+		--mount type=bind,source=$(PWD)/backup-manager/config,target=/config "bkp_manager:latest" \
+		-c "export BKP_CONFIG_FILE=/config/initial-config.yaml; ./manager"; \
 	done
 	./scripts/network-stats
 .PHONY: docker-bkpmngr-add
