@@ -24,4 +24,34 @@ Además del correcto funcionamiento del servidor, deben tenerse en cuenta las si
 
 ## Desarrollo
 
-TODO
+### Ejecución
+
+Para poder levantar el sistema con la configuración inicial, deberá ejecutarse:
+```bash
+make docker-compose-up
+make docker-compose-logs
+```
+
+Esta configuración consta de un único nodo para el BackupServer y dos nodos para las aplicaciones dummies. En caso de querer variar estos parámetros, podrá ejecutarse:
+```bash
+make docker-compose-up BKP_MANAGERS=X ECHO_SERVERS=Y
+make docker-compose-logs
+```
+
+Dónde se levantarán X servidores e Y aplicaciones. En caso de que se quieran agregar nuevos nodos sin tener que reiniciar el sistema, contamos con el comando:
+```bash
+make docker-add-echosv
+```
+
+Con este se agregará por defecto un único nodo extra, pero pueden especificarse más a través de la variable **NEW_ECHOSVS**. Finalmente, para un correcto cierre del sistema, se deberá utilizar:
+```bash
+make docker-compose-down
+```
+### Análisis
+
+Para conectarse directamente con alguno de los containers, podrán utilizarse los siguientes comandos:
+```bash
+make docker-manager-shell			# Conexión con el BackupServer
+make docker-echosv-shell			# Conexión con el EchoServer dummy
+```
+En caso de que haya más de un container para cada clase, se podrán especificar los parámetros **MANAGER** y **ECHOSV**, indicando a cuál se desea conectar. Por defecto, ambos valores se setearán en 1.

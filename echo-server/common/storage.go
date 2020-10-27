@@ -18,11 +18,6 @@ const LOG_FILE = "Log.info"
 const INFO_FILE = "Data.info"
 const BACKUP_FILE = "Backup.tar.gz"
 
-type StorageConfig struct {
-	Port 			string
-	StorageFile		string
-}
-
 type StorageManager struct {
 	Path			string
 }
